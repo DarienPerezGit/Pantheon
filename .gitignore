@@ -1,0 +1,25 @@
+# Environment variables — NEVER commit
+.env
+
+# Python
+__pycache__/
+*.py[cod]
+*.pyo
+.venv/
+venv/
+env/
+*.egg-info/
+dist/
+build/
+
+# Go
+signal-api/signal-api
+signal-api/*.exe
+
+# Logs
+*.log
+agent.log
+
+# OS
+.DS_Store
+Thumbs.db
