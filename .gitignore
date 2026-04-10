@@ -16,6 +16,10 @@ build/
 signal-api/signal-api
 signal-api/*.exe
 
+# Node
+signal-api-ts/node_modules/
+signal-api-ts/dist/
+
 # Logs
 *.log
 agent.log
