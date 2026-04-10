@@ -250,9 +250,9 @@ python agent.py BTC-USDC
 ## 7. Pending Tasks — Sprint Final (antes del 13 abril)
 
 ### P1 — Git: Commit y PR
-- [ ] Hacer commit de todos los cambios actuales en `master`
-- [ ] Abrir PR de `master` → `main`
-- [ ] Revisar que el README refleja el estado actual
+- [x] Hacer commit de todos los cambios actuales en `dev`
+- [ ] Abrir PR de `dev` → `main`
+- [x] Revisar que el README refleja el estado actual
 
 ### P2 — README.md: Tablas de TX
 - [ ] Actualizar la sección de transacciones verificadas con hashes reales del Ciclo 19+
