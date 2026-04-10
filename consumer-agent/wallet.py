@@ -1,7 +1,12 @@
-﻿"""
+"""
 wallet.py — Stellar wallet operations for the Consumer Agent.
 
 Loads credentials from .env at the repo root (two levels up from this file).
+
+[MIGRATION] Asset: XLM (native) → USDC (Stellar Testnet)
+  - USDC_ISSUER: Emisor oficial de USDC en Stellar Testnet.
+  - ensure_trustline(): Garantiza que el consumer tenga trustline antes de pagar.
+  - send_payment(): Ahora envía Asset("USDC", USDC_ISSUER) en lugar de Asset.native().
 """
 
 from pathlib import Path
@@ -13,7 +18,7 @@ load_dotenv(Path(__file__).parent.parent / ".env")
 import os
 import time
 import requests
-from stellar_sdk import Keypair, Server, TransactionBuilder, Network, Asset
+from stellar_sdk import Keypair, Server, TransactionBuilder, Network, Asset, ChangeTrust
 
 # --- Config from environment ---
 
@@ -26,6 +31,14 @@ if not CONSUMER_SECRET_KEY:
 if not CONSUMER_PUBLIC_KEY:
     raise EnvironmentError("CONSUMER_PUBLIC_KEY is not set in .env")
 
+# --- [MIGRATION] USDC Asset (Stellar Testnet) ---
+# Emisor oficial de USDC en Stellar Testnet (Circle / Centre).
+# Fuente: https://developers.stellar.org/docs/tokens/usdc
+USDC_ISSUER = "GA5ZSEJYB37JRC5AVCIA5MOP4RHTM335X2KGX3IHOJAPP5RE34K4KZVN"
+
+# Objeto Asset que se reutiliza en send_payment() y ensure_trustline()
+USDC_ASSET = Asset("USDC", USDC_ISSUER)
+
 
 # --- Wallet helpers ---
 
@@ -34,7 +47,7 @@ def get_keypair() -> Keypair:
 
 
 def get_balance() -> float:
-    """Return the native XLM balance for the consumer wallet."""
+    """Return the native XLM balance for the consumer wallet (para gas fees)."""
     server = Server(HORIZON_URL)
     account = server.accounts().account_id(CONSUMER_PUBLIC_KEY).call()
     for balance in account["balances"]:
@@ -43,13 +56,83 @@ def get_balance() -> float:
     return 0.0
 
 
+def get_usdc_balance() -> float:
+    """Return the USDC balance for the consumer wallet."""
+    server = Server(HORIZON_URL)
+    account = server.accounts().account_id(CONSUMER_PUBLIC_KEY).call()
+    for balance in account["balances"]:
+        # Los activos no-nativos tienen asset_code e asset_issuer
+        if (
+            balance.get("asset_code") == "USDC"
+            and balance.get("asset_issuer") == USDC_ISSUER
+        ):
+            return float(balance["balance"])
+    return 0.0
+
+
+def ensure_trustline() -> bool:
+    """
+    [MIGRATION] Verifica si la wallet del Consumer tiene una Trustline activa
+    para USDC. Si no existe, construye, firma y envía una operación ChangeTrust
+    para habilitarla.
+
+    Returns:
+        True si la trustline ya existía o fue creada exitosamente.
+
+    Raises:
+        RuntimeError: Si la operación ChangeTrust falla en Horizon.
+    """
+    server = Server(HORIZON_URL)
+    account = server.accounts().account_id(CONSUMER_PUBLIC_KEY).call()
+
+    # Buscar si ya existe una trustline para USDC del emisor correcto
+    for balance in account["balances"]:
+        if (
+            balance.get("asset_code") == "USDC"
+            and balance.get("asset_issuer") == USDC_ISSUER
+        ):
+            print(f"[TRUSTLINE] OK USDC trustline already exists (balance: {balance['balance']})")
+            return True
+
+    # No existe — crearla con ChangeTrust
+    print("[TRUSTLINE] USDC trustline not found. Submitting ChangeTrust...")
+    keypair = get_keypair()
+    source_account = server.load_account(keypair.public_key)
+
+    transaction = (
+        TransactionBuilder(
+            source_account=source_account,
+            network_passphrase=Network.TESTNET_NETWORK_PASSPHRASE,
+            base_fee=100,
+        )
+        .append_change_trust_op(
+            asset=USDC_ASSET,  # Habilita recepción de USDC de este emisor
+            # limit=None usa el límite máximo por defecto
+        )
+        .set_timeout(30)
+        .build()
+    )
+    transaction.sign(keypair)
+
+    try:
+        response = server.submit_transaction(transaction)
+        print(f"[TRUSTLINE] OK ChangeTrust submitted. TX hash: {response['hash']}")
+        return True
+    except Exception as exc:
+        raise RuntimeError(f"ChangeTrust submission failed: {exc}") from exc
+
+
 def send_payment(destination: str, amount: str, memo: str) -> str:
     """
-    Send a native XLM payment from the consumer wallet.
+    [MIGRATION] Envía un pago en USDC (en lugar de XLM nativo) desde la wallet
+    del Consumer Agent.
+
+    El activo utilizado es USDC_ASSET = Asset("USDC", USDC_ISSUER), que referencia
+    al emisor de USDC en Stellar Testnet. La red (gas) sigue siendo XLM nativo.
 
     Args:
         destination: Stellar public key of the recipient.
-        amount: Amount in XLM as a string (e.g. "0.10").
+        amount: Amount in USDC as a string (e.g. "0.10").
         memo: Text memo to attach (max 28 bytes for testnet).
 
     Returns:
@@ -77,7 +160,9 @@ def send_payment(destination: str, amount: str, memo: str) -> str:
             .add_text_memo(memo_text)
             .append_payment_op(
                 destination=destination,
-                asset=Asset.native(),
+                # [MIGRATION] Antes: Asset.native() (XLM)
+                # Ahora: USDC_ASSET — Asset("USDC", USDC_ISSUER)
+                asset=USDC_ASSET,
                 amount=str(amount),
             )
             .set_timeout(30)

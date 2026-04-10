@@ -18,10 +18,12 @@ import (
 
 // ─── Types ───────────────────────────────────────────────────────────────────
 
+// [MIGRATION] El campo Issuer es nuevo: informa al Consumer el emisor del USDC.
 type PaymentRequired struct {
 	Error       string `json:"error"`
 	Amount      string `json:"amount"`
-	Asset       string `json:"asset"`
+	Asset       string `json:"asset"`   // [MIGRATION] antes: "XLM", ahora: "USDC"
+	Issuer      string `json:"issuer"`  // [MIGRATION] nuevo campo: public key del emisor
 	Destination string `json:"destination"`
 	Network     string `json:"network"`
 	Memo        string `json:"memo"`
@@ -59,6 +61,13 @@ type AgentState struct {
 	TxLog        []TxEntry `json:"tx_log"`
 }
 
+// ─── Constants ───────────────────────────────────────────────────────────────
+
+// [MIGRATION] USDC en Stellar Testnet.
+// Emisor: Circle / Centre — clave pública oficial para la red de pruebas.
+// Fuente: https://developers.stellar.org/docs/tokens/usdc
+const usdcIssuer = "GA5ZSEJYB37JRC5AVCIA5MOP4RHTM335X2KGX3IHOJAPP5RE34K4KZVN"
+
 // ─── State ───────────────────────────────────────────────────────────────────
 
 var (
@@ -84,6 +93,10 @@ var (
 		Pair:       "BTC-USDC",
 		TxLog:      []TxEntry{},
 	}
+
+	// anti-replay: tracks TX hashes already consumed (in-memory, resets on restart)
+	usedTxMu     sync.Mutex
+	usedTxHashes = make(map[string]struct{})
 )
 
 // ─── Main ────────────────────────────────────────────────────────────────────
@@ -181,6 +194,23 @@ func signalHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	// ── Anti-replay guard ────────────────────────────────────────────────────
+	usedTxMu.Lock()
+	_, seen := usedTxHashes[txHash]
+	usedTxMu.Unlock()
+	if seen {
+		log.Printf("[%s] [REPLAY] TX already consumed: %s", ts, txHash)
+		w.Header().Set("Content-Type", "application/json")
+		w.WriteHeader(http.StatusPaymentRequired)
+		_ = json.NewEncoder(w).Encode(map[string]string{
+			"error":   "TX hash already used",
+			"details": "This transaction has already been consumed. Submit a new payment.",
+			"tx_hash": txHash,
+		})
+		return
+	}
+	// ─────────────────────────────────────────────────────────────────────────
+
 	log.Printf("[%s] [VERIFY] Checking tx: %s", ts, txHash)
 	valid, err := verifyPayment(txHash, pair)
 	if err != nil {
@@ -203,6 +233,11 @@ func signalHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	// Mark TX as consumed before signal delivery (prevents TOCTOU race)
+	usedTxMu.Lock()
+	usedTxHashes[txHash] = struct{}{}
+	usedTxMu.Unlock()
+
 	signal := generateSignalClaude(pair)
 	log.Printf("[%s] [SIGNAL] %s | confidence: %.2f | pair: %s", ts, signal.Signal, signal.Confidence, signal.Pair)
 
@@ -220,9 +255,12 @@ func respondPaymentRequired(w http.ResponseWriter, pair string) {
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(http.StatusPaymentRequired)
 	_ = json.NewEncoder(w).Encode(PaymentRequired{
-		Error:       "Payment required",
-		Amount:      signalPrice,
-		Asset:       "XLM",
+		Error:  "Payment required",
+		Amount: signalPrice,
+		// [MIGRATION] Campo 'asset' cambia de "XLM" → "USDC"
+		Asset: "USDC",
+		// [MIGRATION] Campo nuevo: informa al Consumer cuál emisor debe usar
+		Issuer:      usdcIssuer,
 		Destination: serverPublicKey,
 		Network:     "stellar-testnet",
 		Memo:        memo,
@@ -347,18 +385,23 @@ func verifyPayment(txHash, pair string) (bool, error) {
 			continue
 		}
 
-		// Only accept native XLM (asset_type = "native")
-		assetType, _ := record["asset_type"].(string)
-		if assetType != "native" {
+		// [MIGRATION] Ya no validamos asset_type == "native" (XLM).
+		// Ahora verificamos que el activo sea exactamente USDC del emisor correcto.
+		// Horizon expone los activos no-nativos con los campos 'asset_code' y 'asset_issuer'.
+		assetCode, _ := record["asset_code"].(string)
+		assetIssuer, _ := record["asset_issuer"].(string)
+		if assetCode != "USDC" || assetIssuer != usdcIssuer {
+			log.Printf("[VERIFY] Asset mismatch: code=%q issuer=%q — expected USDC / %s",
+				assetCode, assetIssuer, usdcIssuer)
 			continue
 		}
 
 		amount, _ := record["amount"].(string)
 		if amountSufficient(amount, signalPrice) {
-			log.Printf("[VERIFY] ✓ Valid payment: %s XLM to %s (memo: %s)", amount, to, memo)
+			log.Printf("[VERIFY] ✓ Valid payment: %s USDC to %s (memo: %s)", amount, to, memo)
 			return true, nil
 		}
-		log.Printf("[VERIFY] Amount too low: got %s, need %s", amount, signalPrice)
+		log.Printf("[VERIFY] Amount too low: got %s USDC, need %s", amount, signalPrice)
 	}
 
 	return false, nil

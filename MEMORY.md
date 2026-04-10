@@ -13,7 +13,7 @@
 - **Requisitos obligatorios:** Repo público + README + video demo 2-3 min + TXs reales en Stellar testnet
 
 ### Concepto
-**Pantheon — Signal Agent Marketplace.** Un agente consumidor autónomo (Python + Groq LLM) paga micropagos en Stellar XLM para obtener señales de trading de un servidor productor (Go API), usando el protocolo **x402** como capa de monetización machine-to-machine. El pain point central del hackathon es *"los agentes no pueden pagar"* — este proyecto lo resuelve de forma demostrable y on-chain.
+**Pantheon — Signal Agent Marketplace.** Un agente consumidor autónomo (Python + Groq LLM) paga micropagos en USDC (Stellar Testnet) para obtener señales de trading de un servidor productor (Go API), usando el protocolo **x402** como capa de monetización machine-to-machine. El pain point central del hackathon es *"los agentes no pueden pagar"* — este proyecto lo resuelve de forma demostrable y on-chain.
 
 ### Stack Actual
 
@@ -61,10 +61,10 @@
 1. Consumer Agent hace `GET /signal?pair=BTC-USDC` (sin headers de pago)
 2. Go API responde `402 Payment Required` con:
    ```json
-   { "error": "payment required", "amount": "0.10", "asset": "XLM",
+   { "error": "payment required", "amount": "0.10", "asset": "USDC", "issuer": "GA5Z...",
      "destination": "GBZWI25V...2XVN", "memo": "signal-btc-usdc" }
    ```
-3. `wallet.py::send_payment()` construye TX Stellar con SDK, la firma y la envía a Horizon
+3. `wallet.py::send_payment()` construye TX Stellar con SDK (pago en USDC), la firma y la envía a Horizon
 4. `wallet.py::wait_for_confirmation()` espera confirmación on-chain
 5. Consumer retry: `GET /signal?pair=BTC-USDC` con header `X-Payment: <txhash>`
 6. Go API verifica TX en Horizon: monto correcto + destinatario = `SERVER_PUBLIC_KEY`
@@ -129,12 +129,18 @@ El sistema **es funcional end-to-end**. Se han verificado ciclos reales con tran
 **Confirmado funcionando:**
 - ✅ Go Signal API compila y arranca (`go run .` en `signal-api/`)
 - ✅ Consumer Agent ejecuta ciclos x402 autónomos (sin intervención humana)
-- ✅ Transacciones XLM reales enviadas y verificadas en Stellar Testnet
+- ✅ Transacciones USDC reales enviadas y verificadas en Stellar Testnet
 - ✅ `recordSignal()` actualiza el estado global en Go correctamente
 - ✅ Next.js Dashboard renderiza en `localhost:3000`
 - ✅ CORS configurado con `corsMiddleware` en `main.go` (`http://localhost:3000`)
 - ✅ Dashboard polling `/state` cada 5s y renderizando datos live
 - ✅ Ciclo 19 alcanzado en sesiones anteriores (validación multi-ciclo)
+- **Nuevo (10 abril 2026): Protección anti-replay implementada**
+  - El backend Go (`signal-api/main.go`) ahora incluye un mapa en memoria `usedTxHashes` (con mutex) que rechaza cualquier intento de reutilizar un hash de transacción ya consumido.
+  - El rechazo es explícito: HTTP 402 + JSON `{ "error": "TX hash already used", ... }`.
+  - El registro ocurre justo después de la validación y antes de entregar la señal (TOCTOU-safe).
+  - Limitación: el mapa se borra al reiniciar el backend (suficiente para demo/hackathon).
+  - Estado de ramas: rama de trabajo `dev`, rama principal `main`. Cambios anti-replay aún no mergeados a `main` (pendiente PR).
 
 **Wallets Stellar Testnet:**
 
@@ -149,7 +155,7 @@ El sistema **es funcional end-to-end**. Se han verificado ciclos reales con tran
 |---|---|---|
 | `signal-api/main.go` | Go HTTP server, x402 middleware, `/state` endpoint, CORS | ✅ Funcional |
 | `consumer-agent/agent.py` | Loop principal: ciclo → pago → LLM decision | ✅ Funcional |
-| `consumer-agent/wallet.py` | SDK Stellar: send_payment(), get_balance(), wait_for_confirmation() | ✅ Funcional |
+| `consumer-agent/wallet.py` | SDK Stellar: send_payment(USDC), ensure_trustline(), wait_for_confirmation() | ✅ Funcional |
 | `consumer-agent/x402_client.py` | Cliente HTTP x402: maneja 402, reintenta con TX hash | ✅ Funcional |
 | `signal-dashboard/app/page.tsx` | Página principal Next.js, compone todos los componentes | ✅ Funcional |
 | `signal-dashboard/hooks/useAgentState.ts` | Polling hook, manejo de error sin mock | ✅ Funcional |
@@ -179,7 +185,7 @@ CONSUMER_SECRET_KEY=<clave_secreta_del_consumer>
 # Configuración
 STELLAR_NETWORK=testnet
 HORIZON_URL=https://horizon-testnet.stellar.org
-SIGNAL_PRICE_XLM=0.10
+SIGNAL_PRICE_USDC=0.10
 SIGNAL_API_URL=http://localhost:8080
 
 # Opcional — Claude para generación de señales en el servidor
@@ -255,7 +261,7 @@ python agent.py BTC-USDC
 
   | Ciclo | Par | Señal | Monto | TX Hash |
   |---|---|---|---|---|
-  | 1 | BTC-USDC | BUY | 0.10 XLM | `<hash>` |
+  | 1 | BTC-USDC | BUY | 0.10 USDC | `<hash>` |
 
 ### P3 — Video Demo (2-3 minutos)
 Puntos clave a cubrir en el video:

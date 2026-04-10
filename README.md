@@ -7,12 +7,12 @@
 
 ## What it does
 
-Signal Agent Marketplace implements the **x402 protocol** on Stellar: a consumer agent autonomously decides when to buy a trading signal, pays 0.10 XLM to a signal provider API, and uses a LLM (Groq / Llama 3.1 8B) to reason about whether to execute — all in a continuous loop.
+Signal Agent Marketplace implements the **x402 protocol** on Stellar: a consumer agent autonomously decides when to buy a trading signal, pays 0.10 USDC to a signal provider API, and uses a LLM (Groq / Llama 3.1 8B) to reason about whether to execute — all in a continuous loop.
 
 ```
 Consumer Agent  ──GET /signal──▶  Signal API (Go)
                 ◀──── 402 ──────  (payment instructions)
-                ──pay 0.10 XLM──▶  Stellar Testnet
+                ──pay 0.10 USDC─▶  Stellar Testnet
                 ──GET /signal──▶  (X-Payment: <tx_hash>)
                 ◀── BUY/SELL ───  LLM-generated signal
                 ──prompt──▶ Groq  (execute decision)
@@ -69,15 +69,15 @@ All transactions are publicly verifiable on [Stellar Expert](https://stellar.exp
 [2026-04-10T05:29:32Z] [AGENT] Wallet   : GDYJ5LX3Q5LVSZ3GXWIGEZP22VPRXEK4IWJGJVDF5M6WJIEHF3ZK4NDS
 [2026-04-10T05:29:32Z] [AGENT] API URL  : http://localhost:8080
 [2026-04-10T05:29:32Z] [AGENT] Pair     : BTC-USDC
-[2026-04-10T05:29:32Z] [AGENT] Price    : 0.10 XLM / señal
+[2026-04-10T05:29:32Z] [AGENT] Price    : 0.10 USDC / señal
 [2026-04-10T05:29:32Z] [AGENT] Interval : 30s entre ciclos
 [2026-04-10T05:29:32Z] [AGENT] LLM      : Groq llama-3.1-8b-instant
-[2026-04-10T05:29:33Z] [AGENT] Balance  : 9967.5967600 XLM
+[2026-04-10T05:29:33Z] [AGENT] Balance  : 9967.5967600 USDC
 [2026-04-10T05:29:33Z] [CYCLE] ─── Ciclo 1 ─────────────────────────────────────
 [2026-04-10T05:29:33Z] [REQUEST] GET /signal?pair=BTC-USDC
-[2026-04-10T05:29:33Z] [402] Payment required: 0.10 XLM → GBZWI25V...2XVN
+[2026-04-10T05:29:33Z] [402] Payment required: 0.10 USDC → GBZWI25V...2XVN
 [2026-04-10T05:29:33Z] [402] Memo: signal-btc-usdc
-[2026-04-10T05:29:33Z] [PAYMENT] Enviando tx de 0.10 XLM...
+[2026-04-10T05:29:33Z] [PAYMENT] Enviando tx de 0.10 USDC...
 [2026-04-10T05:29:39Z] [PAYMENT] TX enviada   : 5441374f34dc3b58d6c4bd0afa1d0d7e3d1f26232ec269890f5518b228d70b94
 [2026-04-10T05:29:39Z] [PAYMENT] Explorer     : https://stellar.expert/explorer/testnet/tx/5441374f34dc3b58d6c4bd0afa1d0d7e3d1f26232ec269890f5518b228d70b94
 [2026-04-10T05:29:39Z] [PAYMENT] Esperando confirmación en Horizon (~5s en testnet)...
@@ -87,7 +87,7 @@ All transactions are publicly verifiable on [Stellar Expert](https://stellar.exp
 [2026-04-10T05:29:40Z] [SIGNAL] Reasoning : Volumen bajo, esperar confirmación antes de entrar
 [2026-04-10T05:29:41Z] [GROQ] "La confianza es baja y el analista sugiere esperar confirmación antes de entrar, lo que indica que no es un momento óptimo para ejecutar la operación."
 [2026-04-10T05:29:41Z] [DECISION] execute: false
-[2026-04-10T05:29:42Z] [AGENT] Balance actualizado: 9967.4967500 XLM
+[2026-04-10T05:29:42Z] [AGENT] Balance actualizado: 9967.4967500 USDC
 [2026-04-10T05:29:42Z] [AGENT] Próximo ciclo en 30s — Ctrl+C para detener
 ```
 
@@ -100,7 +100,7 @@ All transactions are publicly verifiable on [Stellar Expert](https://stellar.exp
 | Consumer Agent | Python + `stellar-sdk` + `openai` (Groq-compatible) |
 | Decision LLM | Groq `llama-3.1-8b-instant` (OpenAI-compatible API) |
 | Signal generation | Mock with Claude fallback (`claude-sonnet-4-20250514`) |
-| Payment layer | Stellar Testnet (XLM native) |
+| Payment layer | Stellar Testnet (USDC) |
 | Verification | Horizon REST API (`/transactions/<hash>/payments`) |
 | Protocol | x402 (HTTP 402 Payment Required) |
 
@@ -113,7 +113,7 @@ All transactions are publicly verifiable on [Stellar Expert](https://stellar.exp
 3. Consumer builds, signs, and submits a Stellar transaction (memo: `signal-btc-usdc`)
 4. Consumer polls Horizon until TX is confirmed (~1–5s on testnet)
 5. Consumer retries with header `X-Payment: <tx_hash>`
-6. Server verifies on Horizon: destination ✓ · amount ≥ 0.10 XLM ✓ · memo ✓ · successful ✓
+6. Server verifies on Horizon: destination ✓ · amount ≥ 0.10 USDC ✓ · memo ✓ · successful ✓
 7. Server returns `{signal, confidence, reasoning}` JSON
 8. Consumer passes signal to Groq → LLM decides `{execute: bool, reasoning}`
 9. Loop repeats every 30 seconds
@@ -125,8 +125,8 @@ All transactions are publicly verifiable on [Stellar Expert](https://stellar.exp
 // 1. TX exists on Horizon and is marked successful
 // 2. tx.memo == "signal-<pair>" (e.g. "signal-btc-usdc")
 // 3. payment.to == SERVER_PUBLIC_KEY
-// 4. payment.amount >= SIGNAL_PRICE_XLM (0.10)
-// 5. payment.asset_type == "native" (XLM)
+// 4. payment.amount >= SIGNAL_PRICE_USDC (0.10)
+// 5. payment.asset_code == "USDC" && payment.asset_issuer == "<usdcIssuer>"
 ```
 
 ## Project structure
@@ -234,7 +234,7 @@ make demo   # or: bash scripts/demo.sh BTC-USDC
 | `GROQ_API_KEY` | Groq API key — free at [console.groq.com](https://console.groq.com) |
 | `ANTHROPIC_API_KEY` | Optional — enables Claude signal generation in Go server |
 | `HORIZON_URL` | Horizon endpoint (default: testnet) |
-| `SIGNAL_PRICE_XLM` | Price per signal in XLM (default: 0.10) |
+| `SIGNAL_PRICE_USDC` | Price per signal in USDC (default: 0.10) |
 | `SIGNAL_API_URL` | URL of the Signal API (default: http://localhost:8080) |
 
 ## Hackathon
@@ -305,11 +305,11 @@ python agent.py BTC-USDC
 
 ```
 [AGENT]   Consumer Agent iniciado
-[AGENT]   Balance: 10000.0000000 XLM
+[AGENT]   Balance: 10000.0000000 USDC
 [CYCLE]   ─── Ciclo 1 ─────────────────────────────────────
 [REQUEST] GET /signal?pair=BTC-USDC
-[402]     Payment required: 0.10 XLM → GABCD...
-[PAYMENT] Enviando tx de 0.10 XLM...
+[402]     Payment required: 0.10 USDC → GABCD...
+[PAYMENT] Enviando tx de 0.10 USDC...
 [PAYMENT] TX enviada   : abc123...
 [PAYMENT] TX confirmada: abc123...
 [REQUEST] Reintentando con X-Payment: abc123...
@@ -329,7 +329,7 @@ python agent.py BTC-USDC
 | `CONSUMER_SECRET_KEY` | Stellar secret key of the consumer agent wallet |
 | `ANTHROPIC_API_KEY` | Anthropic API key for Claude signal generation |
 | `HORIZON_URL` | Horizon endpoint (default: testnet) |
-| `SIGNAL_PRICE_XLM` | Price per signal in XLM (default: 0.10) |
+| `SIGNAL_PRICE_USDC` | Price per signal in USDC (default: 0.10) |
 | `SIGNAL_API_URL` | URL of the Signal API (default: http://localhost:8080) |
 
 ## Hackathon
