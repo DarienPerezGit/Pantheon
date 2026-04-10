@@ -21,7 +21,7 @@ import os
 import sys
 import time
 
-import anthropic
+from openai import OpenAI  # noqa: F401
 
 from wallet import send_payment, wait_for_confirmation, get_balance, CONSUMER_PUBLIC_KEY
 from x402_client import get_signal, log
@@ -30,23 +30,30 @@ from x402_client import get_signal, log
 
 SIGNAL_API_URL = os.getenv("SIGNAL_API_URL", "http://localhost:8080")
 SIGNAL_PRICE_XLM = os.getenv("SIGNAL_PRICE_XLM", "0.10")
-ANTHROPIC_API_KEY = os.getenv("ANTHROPIC_API_KEY", "")
+GROQ_API_KEY = os.getenv("GROQ_API_KEY", "")
+
+_groq_client = None
+if GROQ_API_KEY:
+    _groq_client = OpenAI(
+        api_key=GROQ_API_KEY,
+        base_url="https://api.groq.com/openai/v1",
+    )
 
 DEFAULT_PAIR = "BTC-USDC"
 CYCLE_INTERVAL = 30  # seconds between cycles
 
 
-# ─── Claude decision ──────────────────────────────────────────────────────────
+# ─── Groq decision ──────────────────────────────────────────────────────────
 
-def claude_decide(signal: dict, balance: float) -> dict:
+def llm_decide(signal: dict, balance: float) -> dict:
     """
-    Ask Claude whether to execute the trade signal.
+    Ask Groq (llama-3.1-8b-instant) whether to execute the trade signal.
 
     Returns dict with keys: execute (bool), reasoning (str).
-    Falls back to a simple rule-based decision if Claude is unavailable.
+    Falls back to a simple rule-based decision if the API key is unavailable.
     """
-    if not ANTHROPIC_API_KEY:
-        log("CLAUDE", "No API key — using rule-based decision")
+    if not GROQ_API_KEY or _groq_client is None:
+        log("LLM", "No GROQ_API_KEY — using rule-based decision")
         execute = signal.get("confidence", 0) >= 0.65 and signal.get("signal") != "HOLD"
         return {"execute": execute, "reasoning": "Rule-based: confidence threshold 0.65"}
 
@@ -59,17 +66,17 @@ def claude_decide(signal: dict, balance: float) -> dict:
         f"  Razonamiento del analista: {signal.get('reasoning')}\n\n"
         f"¿Ejecutás esta operación? "
         f"Respondé SOLO con JSON válido sin markdown: "
-        f'{{\"execute\": true|false, \"reasoning\": \"una oración concisa\"}}'
+        f'{{"execute": true|false, "reasoning": "una oración concisa"}}'
     )
 
-    client = anthropic.Anthropic(api_key=ANTHROPIC_API_KEY)
-    message = client.messages.create(
-        model="claude-sonnet-4-20250514",
-        max_tokens=128,
+    completion = _groq_client.chat.completions.create(
+        model="llama-3.1-8b-instant",
         messages=[{"role": "user", "content": prompt}],
+        max_tokens=128,
+        temperature=0.2,
     )
+    text = completion.choices[0].message.content.strip()
 
-    text = message.content[0].text.strip()
     # Strip markdown code fences if model adds them
     if text.startswith("```"):
         lines = text.split("\n")
@@ -107,15 +114,15 @@ def run_cycle(pair: str, cycle: int, balance: float) -> float:
     log("SIGNAL", f"{action} | confidence: {confidence:.2f} | {pair}")
     log("SIGNAL", f"Reasoning : {reasoning}")
 
-    # Claude decision
+    # LLM decision (Groq — llama-3.1-8b-instant)
     try:
-        decision = claude_decide(signal, balance)
+        decision = llm_decide(signal, balance)
         execute = decision.get("execute", False)
-        claude_reasoning = decision.get("reasoning", "")
-        log("CLAUDE", f'"{claude_reasoning}"')
+        llm_reasoning = decision.get("reasoning", "")
+        log("GROQ", f'"{llm_reasoning}"')
         log("DECISION", f"execute: {str(execute).lower()}")
     except Exception as exc:
-        log("CLAUDE", f"Error consultando Claude: {exc} — defaulting to no-execute")
+        log("GROQ", f"Error consultando Groq: {exc} — defaulting to no-execute")
         execute = False
 
     # Refresh balance
@@ -139,10 +146,10 @@ def main() -> None:
     log("AGENT", f"Pair     : {pair}")
     log("AGENT", f"Price    : {SIGNAL_PRICE_XLM} XLM / señal")
     log("AGENT", f"Interval : {CYCLE_INTERVAL}s entre ciclos")
-    if ANTHROPIC_API_KEY:
-        log("AGENT", "Claude   : habilitado (claude-sonnet-4-20250514)")
+    if GROQ_API_KEY:
+        log("AGENT", "LLM      : Groq llama-3.1-8b-instant")
     else:
-        log("AGENT", "Claude   : deshabilitado (rule-based decisions)")
+        log("AGENT", "LLM      : deshabilitado (rule-based decisions)")
 
     balance = 0.0
     try:

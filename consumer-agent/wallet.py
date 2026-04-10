@@ -61,35 +61,42 @@ def send_payment(destination: str, amount: str, memo: str) -> str:
     keypair = get_keypair()
     server = Server(HORIZON_URL)
 
-    source_account = server.load_account(keypair.public_key)
+    # Retry once on tx_bad_seq (stale sequence number from Horizon cache)
+    for attempt in range(2):
+        source_account = server.load_account(keypair.public_key)
 
-    # Memo must be ≤ 28 bytes; truncate safely
-    memo_text = memo[:28]
+        # Memo must be ≤ 28 bytes; truncate safely
+        memo_text = memo[:28]
 
-    transaction = (
-        TransactionBuilder(
-            source_account=source_account,
-            network_passphrase=Network.TESTNET_NETWORK_PASSPHRASE,
-            base_fee=100,
+        transaction = (
+            TransactionBuilder(
+                source_account=source_account,
+                network_passphrase=Network.TESTNET_NETWORK_PASSPHRASE,
+                base_fee=100,
+            )
+            .add_text_memo(memo_text)
+            .append_payment_op(
+                destination=destination,
+                asset=Asset.native(),
+                amount=str(amount),
+            )
+            .set_timeout(30)
+            .build()
         )
-        .add_text_memo(memo_text)
-        .append_payment_op(
-            destination=destination,
-            asset=Asset.native(),
-            amount=str(amount),
-        )
-        .set_timeout(30)
-        .build()
-    )
 
-    transaction.sign(keypair)
+        transaction.sign(keypair)
 
-    try:
-        response = server.submit_transaction(transaction)
-    except Exception as exc:
-        raise RuntimeError(f"Transaction submission failed: {exc}") from exc
+        try:
+            response = server.submit_transaction(transaction)
+            return response["hash"]
+        except Exception as exc:
+            err = str(exc)
+            if "tx_bad_seq" in err and attempt == 0:
+                time.sleep(2)  # brief pause, then reload account and retry
+                continue
+            raise RuntimeError(f"Transaction submission failed: {exc}") from exc
 
-    return response["hash"]
+    raise RuntimeError("Transaction failed after sequence number retry")
 
 
 def wait_for_confirmation(tx_hash: str, timeout: int = 45, poll_interval: int = 4) -> bool:
