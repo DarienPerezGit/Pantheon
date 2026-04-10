@@ -1,4 +1,4 @@
-"""
+﻿"""
 agent.py — Consumer Agent main entry point.
 
 Requests a trading signal from the Signal API, handles the x402 payment
@@ -13,7 +13,7 @@ Usage:
 from pathlib import Path
 from dotenv import load_dotenv
 
-# Load .env from repo root (two levels up: consumer-agent/ → Pantheon/)
+# Load .env from repo root (two levels up: consumer-agent/ -> Pantheon/)
 load_dotenv(Path(__file__).parent.parent / ".env")
 
 import json
@@ -26,7 +26,7 @@ from openai import OpenAI  # noqa: F401
 from wallet import send_payment, wait_for_confirmation, get_balance, CONSUMER_PUBLIC_KEY
 from x402_client import get_signal, log
 
-# ─── Config ───────────────────────────────────────────────────────────────────
+# --- Config ---
 
 SIGNAL_API_URL = os.getenv("SIGNAL_API_URL", "http://localhost:8080")
 SIGNAL_PRICE_XLM = os.getenv("SIGNAL_PRICE_XLM", "0.10")
@@ -43,7 +43,7 @@ DEFAULT_PAIR = "BTC-USDC"
 CYCLE_INTERVAL = 30  # seconds between cycles
 
 
-# ─── Groq decision ──────────────────────────────────────────────────────────
+# --- Groq decision ---
 
 def llm_decide(signal: dict, balance: float) -> dict:
     """
@@ -86,14 +86,14 @@ def llm_decide(signal: dict, balance: float) -> dict:
     return json.loads(text)
 
 
-# ─── Single cycle ─────────────────────────────────────────────────────────────
+# --- Single cycle ---
 
 def run_cycle(pair: str, cycle: int, balance: float) -> float:
     """
-    Execute one signal-request → pay → decide cycle.
+    Execute one signal-request -> pay -> decide cycle.
     Returns updated balance.
     """
-    log("CYCLE", f"─── Ciclo {cycle} ─────────────────────────────────────")
+    log("CYCLE", f"--- Ciclo {cycle} ---")
 
     # x402 flow (unchanged)
     try:
@@ -135,7 +135,7 @@ def run_cycle(pair: str, cycle: int, balance: float) -> float:
     return balance
 
 
-# ─── Main loop ────────────────────────────────────────────────────────────────
+# --- Main loop ---
 
 def main() -> None:
     pair = sys.argv[1].upper() if len(sys.argv) > 1 else DEFAULT_PAIR

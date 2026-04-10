@@ -31,21 +31,36 @@ The Signal API (Go) is also wired to support Claude for signal generation (falls
 
 ## Live demo — Verified transactions on Stellar testnet
 
-All transactions are publicly verifiable on [Stellar Expert](https://stellar.expert/explorer/testnet):
-
-| Day | Cycle | TX Hash | Explorer |
-|-----|-------|---------|----------|
-| 1 | smoke test | `3b8d6df58b5a3b742669da8d624b7b08262b338e2924f7650f9ff546db5df377` | [View ↗](https://stellar.expert/explorer/testnet/tx/3b8d6df58b5a3b742669da8d624b7b08262b338e2924f7650f9ff546db5df377) |
-| 2 | 1 | `8da141197bd0d38405f06b130f19417494e6eb7b255533a34536c901c0a44443` | [View ↗](https://stellar.expert/explorer/testnet/tx/8da141197bd0d38405f06b130f19417494e6eb7b255533a34536c901c0a44443) |
-| 2 | 2 | `378a2acc6484391776612933c60d27677a3be6cacffcd2dca76fb0ac57387781` | [View ↗](https://stellar.expert/explorer/testnet/tx/378a2acc6484391776612933c60d27677a3be6cacffcd2dca76fb0ac57387781) |
-| 2 | 3 | `fb029dce79a09c2a6751fbb4bc84edc207ece742a590cf45fb8597da73a0b6ae` | [View ↗](https://stellar.expert/explorer/testnet/tx/fb029dce79a09c2a6751fbb4bc84edc207ece742a590cf45fb8597da73a0b6ae) |
-| 3 | 1 | `e4664e027b55bfee9c2e5be50234ed51bcc39bc25ad584d013621f3fdc3c5844` | [View ↗](https://stellar.expert/explorer/testnet/tx/e4664e027b55bfee9c2e5be50234ed51bcc39bc25ad584d013621f3fdc3c5844) |
-| 3 | 2 | `9541c522b8d5a6dccad7975634bfb15b3879dcd671b736d6c95ec341b1d76463` | [View ↗](https://stellar.expert/explorer/testnet/tx/9541c522b8d5a6dccad7975634bfb15b3879dcd671b736d6c95ec341b1d76463) |
-| 4 | 1 | `5441374f34dc3b58d6c4bd0afa1d0d7e3d1f26232ec269890f5518b228d70b94` | [View ↗](https://stellar.expert/explorer/testnet/tx/5441374f34dc3b58d6c4bd0afa1d0d7e3d1f26232ec269890f5518b228d70b94) |
-| 4 | 2 | `e80bd3eeb9cfdcdc7a2686cd848082d9e9d95233ac55e4a95619c63a5202d93d` | [View ↗](https://stellar.expert/explorer/testnet/tx/e80bd3eeb9cfdcdc7a2686cd848082d9e9d95233ac55e4a95619c63a5202d93d) |
-
-**Consumer wallet:** `GDYJ5LX3Q5LVSZ3GXWIGEZP22VPRXEK4IWJGJVDF5M6WJIEHF3ZK4NDS`
+All transactions are publicly verifiable on [Stellar Expert](https://stellar.expert/explorer/testnet).  
+**Consumer wallet:** `GDYJ5LX3Q5LVSZ3GXWIGEZP22VPRXEK4IWJGJVDF5M6WJIEHF3ZK4NDS`  
 **Server wallet:** `GBZWI25VLQRRNZOZAPPYLSGME5HPLAWYN3BUE3ZPRHBZSNGIS4U62XVN`
+
+| Cycle | Timestamp (UTC) | TX Hash | Explorer |
+|-------|-----------------|---------|----------|
+| smoke test | 2026-04-10 03:08 | `3b8d6df58b5a3b742669da8d624b7b08262b338e2924f7650f9ff546db5df377` | [View ↗](https://stellar.expert/explorer/testnet/tx/3b8d6df58b5a3b742669da8d624b7b08262b338e2924f7650f9ff546db5df377) |
+| 1 | 2026-04-10 03:39 | `8da141197bd0d38405f06b130f19417494e6eb7b255533a34536c901c0a44443` | [View ↗](https://stellar.expert/explorer/testnet/tx/8da141197bd0d38405f06b130f19417494e6eb7b255533a34536c901c0a44443) |
+| 2 | 2026-04-10 03:39 | `378a2acc6484391776612933c60d27677a3be6cacffcd2dca76fb0ac57387781` | [View ↗](https://stellar.expert/explorer/testnet/tx/378a2acc6484391776612933c60d27677a3be6cacffcd2dca76fb0ac57387781) |
+| 3 | 2026-04-10 03:40 | `fb029dce79a09c2a6751fbb4bc84edc207ece742a590cf45fb8597da73a0b6ae` | [View ↗](https://stellar.expert/explorer/testnet/tx/fb029dce79a09c2a6751fbb4bc84edc207ece742a590cf45fb8597da73a0b6ae) |
+| 4 | 2026-04-10 03:41 | `9ee6a5624686e5a82f0c6ee36d7087903a2c7161d00e28e072ac4d501a25d7f8` | [View ↗](https://stellar.expert/explorer/testnet/tx/9ee6a5624686e5a82f0c6ee36d7087903a2c7161d00e28e072ac4d501a25d7f8) |
+| 5 | 2026-04-10 03:41 | `99f9859ceef8eb52c69f1e56d6c784c5aa1c930e40a35128167981578d0646ba` | [View ↗](https://stellar.expert/explorer/testnet/tx/99f9859ceef8eb52c69f1e56d6c784c5aa1c930e40a35128167981578d0646ba) |
+| 6 | 2026-04-10 03:42 | `ab3fb83f58ca190bd1bfa15db89af4b23485c51f1a8a12970169364cb3e49e1b` | [View ↗](https://stellar.expert/explorer/testnet/tx/ab3fb83f58ca190bd1bfa15db89af4b23485c51f1a8a12970169364cb3e49e1b) |
+| 7 | 2026-04-10 03:43 | `3932b50730ba4d437bec5f8b00931282989632343dc8423cd4ad27bc5991b4ae` | [View ↗](https://stellar.expert/explorer/testnet/tx/3932b50730ba4d437bec5f8b00931282989632343dc8423cd4ad27bc5991b4ae) |
+| 8 | 2026-04-10 03:43 | `5d312210590f342e9839549491c8d801ea34f8742c560e7364adab270e2c10c8` | [View ↗](https://stellar.expert/explorer/testnet/tx/5d312210590f342e9839549491c8d801ea34f8742c560e7364adab270e2c10c8) |
+| 9 | 2026-04-10 03:44 | `f950b16694a57aa7add1b458ee42e1409447933345c416da2e7d407f35f31581` | [View ↗](https://stellar.expert/explorer/testnet/tx/f950b16694a57aa7add1b458ee42e1409447933345c416da2e7d407f35f31581) |
+| 10 | 2026-04-10 03:45 | `45114c52e7b4841aab1713bac57ce1b18f1e24baf4c05ad17733b21356a7946a` | [View ↗](https://stellar.expert/explorer/testnet/tx/45114c52e7b4841aab1713bac57ce1b18f1e24baf4c05ad17733b21356a7946a) |
+| 11 | 2026-04-10 03:45 | `407f8cca99909ce9015607b9c61b6a8e0530f7ddd481e3d5aaae8334fc2594d6` | [View ↗](https://stellar.expert/explorer/testnet/tx/407f8cca99909ce9015607b9c61b6a8e0530f7ddd481e3d5aaae8334fc2594d6) |
+| 12 | 2026-04-10 03:46 | `4b8a30a59a01332bb1abb903875964920276eb7f1c7b4c324a841f468ed4bdb3` | [View ↗](https://stellar.expert/explorer/testnet/tx/4b8a30a59a01332bb1abb903875964920276eb7f1c7b4c324a841f468ed4bdb3) |
+| 13 | 2026-04-10 03:47 | `4008b4514615d4d2bd53aaf683289cd828936f739395d4466b0e32d08ef7b004` | [View ↗](https://stellar.expert/explorer/testnet/tx/4008b4514615d4d2bd53aaf683289cd828936f739395d4466b0e32d08ef7b004) |
+| 14 | 2026-04-10 03:47 | `a6679e22a3af037ed439eaaa7ec2085f1625888e316eec2fefb8cf4228e1401a` | [View ↗](https://stellar.expert/explorer/testnet/tx/a6679e22a3af037ed439eaaa7ec2085f1625888e316eec2fefb8cf4228e1401a) |
+| 15 | 2026-04-10 03:48 | `bdaa7d5d4838e8fb1a4592e71415ed516c0a83fa192dfb1d79dfe0544b8533bf` | [View ↗](https://stellar.expert/explorer/testnet/tx/bdaa7d5d4838e8fb1a4592e71415ed516c0a83fa192dfb1d79dfe0544b8533bf) |
+| 16 | 2026-04-10 03:49 | `cdf4af976f6de29181321967ffda653402e72806da4b87e1bfe42c16096af459` | [View ↗](https://stellar.expert/explorer/testnet/tx/cdf4af976f6de29181321967ffda653402e72806da4b87e1bfe42c16096af459) |
+| 17 | 2026-04-10 03:49 | `ca6c817535dadb14da02278480ba2558def0432fed4443a9b7d22685a725f43b` | [View ↗](https://stellar.expert/explorer/testnet/tx/ca6c817535dadb14da02278480ba2558def0432fed4443a9b7d22685a725f43b) |
+| 18 | 2026-04-10 03:50 | `ed0a884f02fef292ff6361dc110afb1c7feff0844a9c1a834d4a371cdc5e000e` | [View ↗](https://stellar.expert/explorer/testnet/tx/ed0a884f02fef292ff6361dc110afb1c7feff0844a9c1a834d4a371cdc5e000e) |
+| 19 | 2026-04-10 03:51 | `dcedd700974d04391f10222378eac12da1585cd68eb2b97d08fcb673b1a96061` | [View ↗](https://stellar.expert/explorer/testnet/tx/dcedd700974d04391f10222378eac12da1585cd68eb2b97d08fcb673b1a96061) |
+| 20 | 2026-04-10 03:51 | `cc647098ad4b89b43817872f101f68f060ecfa53697b5be3f8f0e6c39abd7106` | [View ↗](https://stellar.expert/explorer/testnet/tx/cc647098ad4b89b43817872f101f68f060ecfa53697b5be3f8f0e6c39abd7106) |
+| 21 | 2026-04-10 03:52 | `11a2696250afe08319f2f39a1d5f09bd6e894e123f3c2a0d9fe90848fe7a6416` | [View ↗](https://stellar.expert/explorer/testnet/tx/11a2696250afe08319f2f39a1d5f09bd6e894e123f3c2a0d9fe90848fe7a6416) |
+| 22 | 2026-04-10 03:53 | `3d90091ca814ffc4f4a6792bb5122dab39e9094e464633625afdecc44743b3d4` | [View ↗](https://stellar.expert/explorer/testnet/tx/3d90091ca814ffc4f4a6792bb5122dab39e9094e464633625afdecc44743b3d4) |
+| 23 | 2026-04-10 03:53 | `7fd737f5571d598621a47ac45dcdf2ca3c9fcc11b6c5498557102183d325030b` | [View ↗](https://stellar.expert/explorer/testnet/tx/7fd737f5571d598621a47ac45dcdf2ca3c9fcc11b6c5498557102183d325030b) |
 
 ## Real output — Successful cycle with LLM reasoning
 

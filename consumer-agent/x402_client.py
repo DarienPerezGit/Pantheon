@@ -1,10 +1,10 @@
-"""
+﻿"""
 x402_client.py — HTTP client that handles the x402 Payment Required handshake.
 
 Flow:
-  1. GET /signal → 402 with {amount, asset, destination, memo}
+  1. GET /signal -> 402 with {amount, asset, destination, memo}
   2. Build + sign Stellar tx
-  3. GET /signal + X-Payment: <tx_hash> → 200 with signal
+  3. GET /signal + X-Payment: <tx_hash> -> 200 with signal
 """
 
 import sys
@@ -12,14 +12,14 @@ import requests
 from datetime import datetime, timezone
 
 
-# ─── Logging ──────────────────────────────────────────────────────────────────
+# --- Logging ---
 
 def log(level: str, message: str) -> None:
     ts = datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ")
     print(f"[{ts}] [{level}] {message}", flush=True)
 
 
-# ─── x402 Client ──────────────────────────────────────────────────────────────
+# --- x402 Client ---
 
 def get_signal(
     base_url: str,
@@ -33,8 +33,8 @@ def get_signal(
     Args:
         base_url:        Base URL of the Signal API (e.g. "http://localhost:8080").
         pair:            Trading pair (e.g. "BTC-USDC").
-        wallet_send_fn:  Callable(destination, amount, memo) → tx_hash (str).
-        wait_fn:         Callable(tx_hash) → bool (True = confirmed).
+        wallet_send_fn:  Callable(destination, amount, memo) -> tx_hash (str).
+        wait_fn:         Callable(tx_hash) -> bool (True = confirmed).
 
     Returns:
         Signal dict from the API.
@@ -45,7 +45,7 @@ def get_signal(
     url = f"{base_url}/signal"
     params = {"pair": pair}
 
-    # ── Step 1: Initial request (no payment header) ────────────────────────────
+    # --- Step 1: Initial request (no payment header) ---
     log("REQUEST", f"GET /signal?pair={pair}")
 
     try:
@@ -62,7 +62,7 @@ def get_signal(
             f"Unexpected status {resp.status_code} from Signal API: {resp.text}"
         )
 
-    # ── Step 2: Parse 402 instructions ────────────────────────────────────────
+    # --- Step 2: Parse 402 instructions ---
     try:
         instructions = resp.json()
     except Exception as exc:
@@ -76,10 +76,10 @@ def get_signal(
     if not destination:
         raise RuntimeError("402 response missing 'destination' field")
 
-    log("402", f"Payment required: {amount} {asset} → {destination[:8]}...{destination[-4:]}")
+    log("402", f"Payment required: {amount} {asset} -> {destination[:8]}...{destination[-4:]}")
     log("402", f"Memo: {memo}")
 
-    # ── Step 3: Send payment ───────────────────────────────────────────────────
+    # --- Step 3: Send payment ---
     log("PAYMENT", f"Enviando tx de {amount} {asset}...")
 
     try:
@@ -90,7 +90,7 @@ def get_signal(
     log("PAYMENT", f"TX enviada   : {tx_hash}")
     log("PAYMENT", f"Explorer     : https://stellar.expert/explorer/testnet/tx/{tx_hash}")
 
-    # ── Step 4: Wait for confirmation ──────────────────────────────────────────
+    # --- Step 4: Wait for confirmation ---
     log("PAYMENT", "Esperando confirmación en Horizon (~5s en testnet)...")
 
     confirmed = wait_fn(tx_hash)
@@ -102,7 +102,7 @@ def get_signal(
 
     log("PAYMENT", f"TX confirmada: {tx_hash}")
 
-    # ── Step 5: Retry with X-Payment header ───────────────────────────────────
+    # --- Step 5: Retry with X-Payment header ---
     log("REQUEST", f"Reintentando con X-Payment: {tx_hash}")
 
     try:
