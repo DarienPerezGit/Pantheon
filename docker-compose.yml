@@ -13,8 +13,6 @@
 # In dev mode the source trees are mounted as volumes so edits are reflected
 # without rebuilding images.
 
-version: "3.9"
-
 networks:
   pantheon-net:
     driver: bridge
