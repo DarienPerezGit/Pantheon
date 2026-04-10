@@ -1,0 +1,74 @@
+# ─── Pantheon — Docker Compose (development) ─────────────────────────────────
+#
+# Services:
+#   signal-api      — TypeScript/Node 20 server (x402 + Stellar)
+#   consumer-agent  — Python 3.11 autonomous agent (Groq LLM + x402 client)
+#
+# Usage:
+#   docker-compose up --build        # start everything
+#   docker-compose down              # stop and remove containers
+#   docker-compose logs -f           # stream all logs
+#
+# Env vars come from .env in the repo root — never copied inside images.
+# In dev mode the source trees are mounted as volumes so edits are reflected
+# without rebuilding images.
+
+version: "3.9"
+
+networks:
+  pantheon-net:
+    driver: bridge
+
+services:
+  # ── Signal API (TypeScript / Node 20) ───────────────────────────────────────
+  signal-api:
+    build:
+      context: ./signal-api-ts
+      dockerfile: Dockerfile
+      target: runtime          # production image; change to "deps" for dev cmd
+    image: pantheon/signal-api:dev
+    container_name: pantheon-signal-api
+    restart: unless-stopped
+    env_file:
+      - .env                   # injected at runtime — never baked into image
+    environment:
+      - PORT=8080
+      # Override SIGNAL_API_URL so the TS server knows its own public address
+      - SIGNAL_API_URL=http://signal-api:8080
+    ports:
+      - "8080:8080"
+    networks:
+      - pantheon-net
+    # Hot-reload in development: mount src so tsx --watch picks up changes.
+    # The built dist/ and node_modules stay inside the container.
+    volumes:
+      - ./signal-api-ts/src:/app/src:ro
+    healthcheck:
+      test: ["CMD", "wget", "-qO-", "http://localhost:8080/health"]
+      interval: 10s
+      timeout: 5s
+      start_period: 15s
+      retries: 3
+
+  # ── Consumer Agent (Python 3.11) ─────────────────────────────────────────────
+  consumer-agent:
+    build:
+      context: ./consumer-agent
+      dockerfile: Dockerfile
+    image: pantheon/consumer-agent:dev
+    container_name: pantheon-consumer-agent
+    restart: unless-stopped
+    env_file:
+      - .env
+    environment:
+      # Point the agent to the signal-api container (internal DNS name)
+      - SIGNAL_API_URL=http://signal-api:8080
+      - TRADING_PAIR=BTC-USDC
+    networks:
+      - pantheon-net
+    # Mount source for hot-reload (python picks up changes on next cycle)
+    volumes:
+      - ./consumer-agent:/app:ro
+    depends_on:
+      signal-api:
+        condition: service_healthy
