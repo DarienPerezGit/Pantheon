@@ -10,6 +10,7 @@ import (
 	"net/http"
 	"os"
 	"strings"
+	"sync"
 	"time"
 
 	"github.com/joho/godotenv"
@@ -35,6 +36,29 @@ type Signal struct {
 	ValidForSeconds int     `json:"valid_for_seconds"`
 }
 
+// ─── Dashboard Types ─────────────────────────────────────────────────────────
+
+type TxEntry struct {
+	Time   string `json:"time"`
+	Cycle  int    `json:"cycle"`
+	Amount string `json:"amount"`
+	Hash   string `json:"hash"`
+	Pair   string `json:"pair"`
+	Signal string `json:"signal"`
+}
+
+type AgentState struct {
+	Cycle        int       `json:"cycle"`
+	LastSignal   string    `json:"last_signal"`
+	Confidence   float64   `json:"confidence"`
+	Reasoning    string    `json:"reasoning"`
+	Pair         string    `json:"pair"`
+	ServerWallet string    `json:"server_wallet"`
+	SignalPrice  string    `json:"signal_price"`
+	UpdatedAt    string    `json:"updated_at"`
+	TxLog        []TxEntry `json:"tx_log"`
+}
+
 // ─── State ───────────────────────────────────────────────────────────────────
 
 var (
@@ -51,6 +75,14 @@ var (
 		"Volumen bajo, esperar confirmación antes de entrar",
 		"MACD cruzando señal alcista, confluencia con EMA 200",
 		"Soporte fuerte en nivel actual, risk/reward favorable",
+	}
+
+	// dashboard state — protected by stateMu
+	stateMu    sync.RWMutex
+	agentState = &AgentState{
+		LastSignal: "—",
+		Pair:       "BTC-USDC",
+		TxLog:      []TxEntry{},
 	}
 )
 
@@ -83,6 +115,9 @@ func main() {
 	mux := http.NewServeMux()
 	mux.HandleFunc("/health", healthHandler)
 	mux.HandleFunc("/signal", signalHandler)
+	mux.HandleFunc("/state", stateHandler)
+	// Serve the dashboard static files at /ui/
+	mux.Handle("/ui/", http.StripPrefix("/ui/", http.FileServer(http.Dir("../dashboard"))))
 
 	addr := ":8080"
 	log.Printf("[START] Signal API listening on %s", addr)
@@ -95,9 +130,24 @@ func main() {
 		log.Printf("[CONFIG] Claude API    : disabled (mock signals)")
 	}
 
-	if err := http.ListenAndServe(addr, mux); err != nil {
+	if err := http.ListenAndServe(addr, corsMiddleware(mux)); err != nil {
 		log.Fatalf("[FATAL] Server error: %v", err)
 	}
+}
+
+// ─── CORS Middleware ─────────────────────────────────────────────────────────
+
+func corsMiddleware(next http.Handler) http.Handler {
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Access-Control-Allow-Origin", "http://localhost:3000")
+		w.Header().Set("Access-Control-Allow-Methods", "GET, POST, OPTIONS")
+		w.Header().Set("Access-Control-Allow-Headers", "Content-Type, X-Payment")
+		if r.Method == http.MethodOptions {
+			w.WriteHeader(http.StatusNoContent)
+			return
+		}
+		next.ServeHTTP(w, r)
+	})
 }
 
 // ─── Handlers ─────────────────────────────────────────────────────────────────
@@ -156,6 +206,9 @@ func signalHandler(w http.ResponseWriter, r *http.Request) {
 	signal := generateSignalClaude(pair)
 	log.Printf("[%s] [SIGNAL] %s | confidence: %.2f | pair: %s", ts, signal.Signal, signal.Confidence, signal.Pair)
 
+	// Update live dashboard state
+	recordSignal(signal, txHash)
+
 	w.Header().Set("Content-Type", "application/json")
 	_ = json.NewEncoder(w).Encode(signal)
 }
@@ -174,6 +227,50 @@ func respondPaymentRequired(w http.ResponseWriter, pair string) {
 		Network:     "stellar-testnet",
 		Memo:        memo,
 	})
+}
+
+// ─── Dashboard State Handler ──────────────────────────────────────────────────
+
+func stateHandler(w http.ResponseWriter, r *http.Request) {
+	stateMu.RLock()
+	snapshot := *agentState
+	snapshot.TxLog = make([]TxEntry, len(agentState.TxLog))
+	copy(snapshot.TxLog, agentState.TxLog)
+	stateMu.RUnlock()
+
+	snapshot.ServerWallet = serverPublicKey
+	snapshot.SignalPrice = signalPrice
+
+	w.Header().Set("Content-Type", "application/json")
+	w.Header().Set("Cache-Control", "no-store")
+	_ = json.NewEncoder(w).Encode(snapshot)
+}
+
+// recordSignal updates the in-memory dashboard state after a successful delivery.
+func recordSignal(sig Signal, txHash string) {
+	stateMu.Lock()
+	defer stateMu.Unlock()
+
+	agentState.Cycle++
+	agentState.LastSignal = sig.Signal
+	agentState.Confidence = sig.Confidence
+	agentState.Reasoning = sig.Reasoning
+	agentState.Pair = sig.Pair
+	agentState.UpdatedAt = time.Now().UTC().Format(time.RFC3339)
+
+	entry := TxEntry{
+		Time:   time.Now().UTC().Format("15:04:05Z"),
+		Cycle:  agentState.Cycle,
+		Amount: signalPrice,
+		Hash:   txHash,
+		Pair:   sig.Pair,
+		Signal: sig.Signal,
+	}
+	// Keep last 10 entries; newest first
+	agentState.TxLog = append([]TxEntry{entry}, agentState.TxLog...)
+	if len(agentState.TxLog) > 10 {
+		agentState.TxLog = agentState.TxLog[:10]
+	}
 }
 
 // ─── Horizon Verification ─────────────────────────────────────────────────────

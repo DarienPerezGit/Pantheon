@@ -1,4 +1,4 @@
-"""
+﻿"""
 wallet.py — Stellar wallet operations for the Consumer Agent.
 
 Loads credentials from .env at the repo root (two levels up from this file).
@@ -15,7 +15,7 @@ import time
 import requests
 from stellar_sdk import Keypair, Server, TransactionBuilder, Network, Asset
 
-# ─── Config from environment ───────────────────────────────────────────────────
+# --- Config from environment ---
 
 HORIZON_URL = os.getenv("HORIZON_URL", "https://horizon-testnet.stellar.org")
 CONSUMER_SECRET_KEY = os.getenv("CONSUMER_SECRET_KEY")
@@ -27,7 +27,7 @@ if not CONSUMER_PUBLIC_KEY:
     raise EnvironmentError("CONSUMER_PUBLIC_KEY is not set in .env")
 
 
-# ─── Wallet helpers ────────────────────────────────────────────────────────────
+# --- Wallet helpers ---
 
 def get_keypair() -> Keypair:
     return Keypair.from_secret(CONSUMER_SECRET_KEY)
