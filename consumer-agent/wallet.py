@@ -34,7 +34,7 @@ if not CONSUMER_PUBLIC_KEY:
 # --- [MIGRATION] USDC Asset (Stellar Testnet) ---
 # Emisor oficial de USDC en Stellar Testnet (Circle / Centre).
 # Fuente: https://developers.stellar.org/docs/tokens/usdc
-USDC_ISSUER = "GA5ZSEJYB37JRC5AVCIA5MOP4RHTM335X2KGX3IHOJAPP5RE34K4KZVN"
+USDC_ISSUER = "GBBD47IF6LWK7P7MDEVSCWR7DPUWV3NY3DTQEVFL4NAT4AQH3ZLLFLA5"
 
 # Objeto Asset que se reutiliza en send_payment() y ensure_trustline()
 USDC_ASSET = Asset("USDC", USDC_ISSUER)

@@ -38,7 +38,7 @@ from x402_client import get_signal, log
 SIGNAL_API_URL = os.getenv("SIGNAL_API_URL", "http://localhost:8080")
 # [MIGRATION] La variable de entorno se llama SIGNAL_PRICE_XLM por retrocompat.,
 # pero el precio ahora se denomina en USDC.
-SIGNAL_PRICE_USDC = os.getenv("SIGNAL_PRICE_XLM", "0.10")
+SIGNAL_PRICE_USDC = os.getenv("SIGNAL_PRICE_USDC", "0.10")
 GROQ_API_KEY = os.getenv("GROQ_API_KEY", "")
 
 _groq_client = None

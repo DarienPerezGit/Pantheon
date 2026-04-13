@@ -9,6 +9,7 @@ import (
 	"math/rand"
 	"net/http"
 	"os"
+	"strconv"
 	"strings"
 	"sync"
 	"time"
@@ -22,8 +23,8 @@ import (
 type PaymentRequired struct {
 	Error       string `json:"error"`
 	Amount      string `json:"amount"`
-	Asset       string `json:"asset"`   // [MIGRATION] antes: "XLM", ahora: "USDC"
-	Issuer      string `json:"issuer"`  // [MIGRATION] nuevo campo: public key del emisor
+	Asset       string `json:"asset"`  // [MIGRATION] antes: "XLM", ahora: "USDC"
+	Issuer      string `json:"issuer"` // [MIGRATION] nuevo campo: public key del emisor
 	Destination string `json:"destination"`
 	Network     string `json:"network"`
 	Memo        string `json:"memo"`
@@ -62,11 +63,10 @@ type AgentState struct {
 }
 
 // ─── Constants ───────────────────────────────────────────────────────────────
-
 // [MIGRATION] USDC en Stellar Testnet.
 // Emisor: Circle / Centre — clave pública oficial para la red de pruebas.
 // Fuente: https://developers.stellar.org/docs/tokens/usdc
-const usdcIssuer = "GA5ZSEJYB37JRC5AVCIA5MOP4RHTM335X2KGX3IHOJAPP5RE34K4KZVN"
+const usdcIssuer = "GBBD47IF6LWK7P7MDEVSCWR7DPUWV3NY3DTQEVFL4NAT4AQH3ZLLFLA5"
 
 // ─── State ───────────────────────────────────────────────────────────────────
 
@@ -111,7 +111,7 @@ func main() {
 	}
 
 	serverPublicKey = os.Getenv("SERVER_PUBLIC_KEY")
-	signalPrice = os.Getenv("SIGNAL_PRICE_XLM")
+	signalPrice = os.Getenv("SIGNAL_PRICE_USDC")
 	horizonURL = os.Getenv("HORIZON_URL")
 	anthropicKey = os.Getenv("ANTHROPIC_API_KEY")
 
@@ -135,7 +135,7 @@ func main() {
 	addr := ":8080"
 	log.Printf("[START] Signal API listening on %s", addr)
 	log.Printf("[CONFIG] Server wallet : %s", serverPublicKey)
-	log.Printf("[CONFIG] Signal price  : %s XLM", signalPrice)
+	log.Printf("[CONFIG] Signal price  : %s USDC", signalPrice)
 	log.Printf("[CONFIG] Horizon URL   : %s", horizonURL)
 	if anthropicKey != "" {
 		log.Printf("[CONFIG] Claude API    : enabled (claude-sonnet-4-20250514)")
@@ -381,7 +381,8 @@ func verifyPayment(txHash, pair string) (bool, error) {
 		}
 
 		to, _ := record["to"].(string)
-		if to != serverPublicKey {
+		if strings.TrimSpace(to) != strings.TrimSpace(serverPublicKey) {
+			log.Printf("[VERIFY] Destination mismatch: got %q, want %q (tx: %s)", to, serverPublicKey, txHash)
 			continue
 		}
 
@@ -397,11 +398,18 @@ func verifyPayment(txHash, pair string) (bool, error) {
 		}
 
 		amount, _ := record["amount"].(string)
-		if amountSufficient(amount, signalPrice) {
-			log.Printf("[VERIFY] ✓ Valid payment: %s USDC to %s (memo: %s)", amount, to, memo)
-			return true, nil
+		paid, err1 := strconv.ParseFloat(amount, 64)
+		expected, err2 := strconv.ParseFloat(signalPrice, 64)
+		if err1 != nil || err2 != nil {
+			log.Printf("[ERROR] Invalid amount format: paid=%q err1=%v expected=%q err2=%v (tx: %s)", amount, err1, signalPrice, err2, txHash)
+			continue
 		}
-		log.Printf("[VERIFY] Amount too low: got %s USDC, need %s", amount, signalPrice)
+		if paid < expected {
+			log.Printf("[VERIFY] Amount too low: got %s USDC, need %s (tx: %s)", amount, signalPrice, txHash)
+			continue
+		}
+		log.Printf("[VERIFY] ✓ Valid payment: %s USDC to %s (memo: %s, tx: %s)", amount, to, memo, txHash)
+		return true, nil
 	}
 
 	return false, nil

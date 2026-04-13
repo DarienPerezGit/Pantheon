@@ -1,0 +1,763 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>PANTHEON — Autonomous Signal Agent</title>
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;900&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet" />
+
+<style>
+/* ── Reset ─────────────────────────────────────────────────────────────────── */
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+/* ── Design tokens ─────────────────────────────────────────────────────────── */
+:root {
+  --bg:      #0A0A0C;
+  --bg2:     #111116;
+  --bg3:     #17171D;
+  --line:    #1E1E26;
+  --line2:   #2A2A36;
+  --text:    #FFFFFF;
+  --text2:   #8B8B9E;
+  --text3:   #56566A;
+  --accent:  #FF007F;
+  --blue:    #00A3FF;
+  --green:   #00FF88;
+  --red:     #FF2D55;
+  --grey:    #556070;
+  --font:    'Inter', system-ui, sans-serif;
+  --mono:    'JetBrains Mono', 'Courier New', monospace;
+  --ease:    cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+html { font-size: 16px; }
+
+body {
+  background: var(--bg);
+  color: var(--text);
+  font-family: var(--font);
+  line-height: 1.5;
+  -webkit-font-smoothing: antialiased;
+  min-height: 100vh;
+  overflow-x: hidden;
+}
+
+/* ── Shell ─────────────────────────────────────────────────────────────────── */
+.shell {
+  max-width: 1160px;
+  margin: 0 auto;
+  padding: 0 40px 80px;
+}
+
+/* ── Header ────────────────────────────────────────────────────────────────── */
+.header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 36px 0 40px;
+  border-bottom: 1px solid var(--line);
+}
+
+.logo {
+  font-size: 17px;
+  font-weight: 900;
+  letter-spacing: 0.2em;
+  color: var(--accent);
+  text-transform: uppercase;
+}
+.logo-sub {
+  color: var(--text3);
+  font-weight: 400;
+  letter-spacing: 0.05em;
+  font-size: 11px;
+  margin-top: 3px;
+}
+
+.live-badge {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: var(--text2);
+}
+
+.live-dot {
+  width: 7px; height: 7px;
+  border-radius: 50%;
+  background: var(--green);
+  animation: pulse 1.8s ease-in-out infinite;
+}
+@keyframes pulse {
+  0%, 100% { opacity: 1; box-shadow: 0 0 0 0 rgba(0,255,136,.4); }
+  50%       { opacity: .5; box-shadow: 0 0 0 5px rgba(0,255,136,0); }
+}
+
+/* live-dot goes red when API unreachable */
+.live-dot.offline { background: var(--red); animation: none; opacity: .7; }
+
+/* ── Section wrapper ───────────────────────────────────────────────────────── */
+.section { padding: 52px 0 0; }
+
+.section-label {
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.22em;
+  text-transform: uppercase;
+  color: var(--text3);
+  margin-bottom: 30px;
+}
+
+/* ── Section 1 — Hero stats ────────────────────────────────────────────────── */
+.hero-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr 1fr;
+}
+
+.hero-col {
+  padding-right: 52px;
+  border-right: 1px solid var(--line);
+}
+.hero-col + .hero-col { padding-left: 52px; }
+.hero-col:last-child  { border-right: none; }
+
+.stat-label {
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+  color: var(--text3);
+  margin-bottom: 16px;
+}
+
+.stat-number {
+  font-size: 54px;
+  font-weight: 700;
+  letter-spacing: -0.03em;
+  line-height: 1;
+  font-variant-numeric: tabular-nums;
+  transition: color .35s var(--ease);
+}
+.stat-number.buy  { color: var(--green); }
+.stat-number.sell { color: var(--red); }
+.stat-number.hold { color: var(--grey); }
+
+.stat-unit  { font-size: 13px; color: var(--text2); margin-top: 10px; }
+.stat-meta  { font-size: 11px; font-family: var(--mono); color: var(--text3); margin-top: 8px; }
+
+/* ── Section 2 — x402 Flow ─────────────────────────────────────────────────── */
+.flow {
+  display: flex;
+  align-items: flex-start;
+  gap: 0;
+}
+
+.flow-step {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 10px;
+  position: relative;
+}
+
+/* connector line between steps */
+.flow-step:not(:last-child)::after {
+  content: '';
+  position: absolute;
+  top: 19px;
+  left: calc(50% + 22px);
+  right: calc(-50% + 22px);
+  height: 1px;
+  background: var(--line2);
+  transition: background .4s var(--ease), box-shadow .4s var(--ease);
+}
+.flow-step.done::after  { background: rgba(0,255,136,.35); }
+.flow-step.active::after { background: var(--accent); box-shadow: 0 0 8px rgba(255,0,127,.5); }
+
+.flow-icon {
+  width: 38px; height: 38px;
+  border-radius: 4px;
+  border: 1px solid var(--line2);
+  background: var(--bg2);
+  display: flex; align-items: center; justify-content: center;
+  font-size: 15px;
+  position: relative; z-index: 1;
+  transition: border-color .35s, background .35s, box-shadow .35s;
+}
+.flow-step.active .flow-icon {
+  border-color: var(--accent);
+  background: rgba(255,0,127,.09);
+  box-shadow: 0 0 18px rgba(255,0,127,.22);
+}
+.flow-step.done .flow-icon {
+  border-color: rgba(0,255,136,.6);
+  background: rgba(0,255,136,.06);
+}
+
+.flow-name {
+  font-size: 10px; font-weight: 700;
+  letter-spacing: 0.1em; text-transform: uppercase;
+  color: var(--text3); text-align: center; max-width: 72px; line-height: 1.4;
+  transition: color .35s;
+}
+.flow-step.active .flow-name { color: var(--text2); }
+.flow-step.done   .flow-name { color: var(--green); }
+
+.flow-sub {
+  font-size: 9px; font-family: var(--mono);
+  color: var(--text3); text-align: center; max-width: 80px; line-height: 1.4;
+  transition: color .35s;
+  min-height: 24px;
+}
+.flow-step.active .flow-sub { color: var(--accent); }
+.flow-step.done   .flow-sub { color: rgba(0,255,136,.7); }
+
+/* ── Section 3 — LLM Reasoning ─────────────────────────────────────────────── */
+.reasoning-box {
+  background: var(--bg2);
+  border: 1px solid var(--line);
+  border-radius: 4px;
+  padding: 28px 32px;
+  position: relative;
+  overflow: hidden;
+}
+.reasoning-box::before {
+  content: '';
+  position: absolute;
+  top: 0; left: 0; right: 0; height: 1px;
+  background: linear-gradient(90deg, var(--accent) 0%, transparent 55%);
+}
+.reasoning-header {
+  display: flex; align-items: center; justify-content: space-between;
+  margin-bottom: 20px;
+}
+.reasoning-title {
+  font-size: 10px; font-weight: 700;
+  letter-spacing: 0.18em; text-transform: uppercase; color: var(--text3);
+}
+.reasoning-badge {
+  font-size: 10px; font-family: var(--mono);
+  color: var(--accent);
+  background: rgba(255,0,127,.09);
+  border: 1px solid rgba(255,0,127,.2);
+  padding: 3px 10px; border-radius: 2px;
+}
+.reasoning-body {
+  font-family: var(--mono); font-size: 14px;
+  line-height: 1.85; color: var(--text2);
+  min-height: 52px;
+}
+.cursor {
+  display: inline-block; width: 2px; height: 1em;
+  background: var(--accent); vertical-align: text-bottom;
+  margin-left: 2px;
+  animation: blink 1s step-end infinite;
+}
+@keyframes blink { 0%,100%{opacity:1} 50%{opacity:0} }
+
+/* ── Section 4 — Tx Log ─────────────────────────────────────────────────────── */
+.tx-table { width: 100%; border-collapse: collapse; }
+
+.tx-table thead th {
+  font-size: 10px; font-weight: 700;
+  letter-spacing: 0.16em; text-transform: uppercase;
+  color: var(--text3); text-align: left;
+  padding: 0 0 14px;
+  border-bottom: 1px solid var(--line);
+}
+.tx-table thead th.right { text-align: right; }
+
+.tx-table tbody tr {
+  border-bottom: 1px solid var(--line);
+  transition: background .25s;
+}
+.tx-table tbody tr:hover { background: var(--bg2); }
+.tx-table tbody tr.new-row {
+  animation: rowIn .5s var(--ease) forwards;
+}
+@keyframes rowIn {
+  from { opacity:0; transform:translateY(-5px); background:rgba(255,0,127,.06); }
+  to   { opacity:1; transform:translateY(0);    background:transparent; }
+}
+
+.tx-table tbody td {
+  padding: 13px 0; font-size: 13px;
+  color: var(--text2); vertical-align: middle;
+}
+.tx-table tbody td.right { text-align: right; }
+
+.tx-time   { font-family: var(--mono); font-size: 12px; color: var(--text3); }
+.tx-cycle  { font-family: var(--mono); font-size: 12px; }
+.tx-amount { font-family: var(--mono); font-size: 13px; font-weight: 600; color: var(--text); }
+.tx-hash   { font-family: var(--mono); font-size: 12px; color: var(--text3); }
+
+.tx-sig {
+  font-size: 10px; font-weight: 700; letter-spacing: .08em;
+  padding: 2px 8px; border-radius: 2px;
+  font-family: var(--mono);
+}
+.tx-sig.buy  { color: var(--green); background: rgba(0,255,136,.1); }
+.tx-sig.sell { color: var(--red);   background: rgba(255,45,85,.1); }
+.tx-sig.hold { color: var(--grey);  background: rgba(85,96,112,.15); }
+
+.tx-link {
+  display: inline-flex; align-items: center; gap: 5px;
+  font-size: 11px; font-weight: 600; letter-spacing: .08em; text-transform: uppercase;
+  color: var(--blue); text-decoration: none;
+  opacity: .65; transition: opacity .2s, color .2s;
+}
+.tx-link:hover { opacity: 1; color: var(--text); }
+
+/* ── Divider + Footer ───────────────────────────────────────────────────────── */
+.divider { height: 1px; background: var(--line); margin: 52px 0 0; }
+
+.footer {
+  display: flex; align-items: center; justify-content: space-between;
+  padding-top: 24px;
+  font-size: 11px; color: var(--text3);
+}
+.footer-mono { font-family: var(--mono); }
+.footer-accent { color: var(--accent); font-weight: 600; }
+
+/* ── Error banner ───────────────────────────────────────────────────────────── */
+.api-banner {
+  display: none;
+  margin-top: 20px;
+  padding: 12px 20px;
+  background: rgba(255,45,85,.08);
+  border: 1px solid rgba(255,45,85,.25);
+  border-radius: 4px;
+  font-size: 12px; color: var(--red);
+  font-family: var(--mono);
+}
+.api-banner.visible { display: block; }
+
+/* ── Responsive ─────────────────────────────────────────────────────────────── */
+@media (max-width: 760px) {
+  .shell { padding: 0 20px 60px; }
+  .hero-grid { grid-template-columns: 1fr; }
+  .hero-col { border-right: none; border-bottom: 1px solid var(--line); padding: 0 0 36px; margin-bottom:0; }
+  .hero-col + .hero-col { padding-left: 0; }
+  .hero-col:last-child { border-bottom: none; }
+  .stat-number { font-size: 42px; }
+  .flow-step::after { display: none; }
+  .flow { flex-wrap: wrap; gap: 16px; }
+  .flow-step { flex: 1 1 calc(33% - 8px); min-width: 80px; }
+}
+</style>
+</head>
+
+<body>
+<div class="shell">
+
+  <!-- ─── Header ─────────────────────────────────────────────────────────── -->
+  <header class="header">
+    <div>
+      <div class="logo">PANTHEON</div>
+      <div class="logo-sub">Autonomous Signal Agent &middot; x402 Protocol on Stellar</div>
+    </div>
+    <div class="live-badge">
+      <div class="live-dot" id="live-dot"></div>
+      <span id="live-text">LIVE &middot; STELLAR TESTNET</span>
+    </div>
+  </header>
+
+  <!-- ─── API error banner ────────────────────────────────────────────────── -->
+  <div class="api-banner" id="api-banner">
+    ⚠ Signal API unreachable at <span id="api-url-text"></span> — showing mock data.
+    Start the server: <strong>cd signal-api &amp;&amp; go run .</strong>
+  </div>
+
+  <!-- ─── Section 1: Hero stats ───────────────────────────────────────────── -->
+  <section class="section">
+    <p class="section-label">Agent Status</p>
+    <div class="hero-grid">
+
+      <div class="hero-col">
+        <p class="stat-label">Consumer Wallet</p>
+        <div class="stat-number" id="h-balance">—</div>
+        <div class="stat-unit">XLM</div>
+        <div class="stat-meta" id="h-wallet">Loading…</div>
+      </div>
+
+      <div class="hero-col">
+        <p class="stat-label">Current Signal</p>
+        <div class="stat-number hold" id="h-signal">—</div>
+        <div class="stat-unit" id="h-pair">BTC-USDC</div>
+        <div class="stat-meta" id="h-time"></div>
+      </div>
+
+      <div class="hero-col">
+        <p class="stat-label">Confidence Score</p>
+        <div class="stat-number" id="h-confidence">—</div>
+        <div class="stat-unit">Groq &middot; llama-3.1-8b-instant</div>
+        <div class="stat-meta" id="h-cycle">Cycle 0</div>
+      </div>
+
+    </div>
+  </section>
+
+  <!-- ─── Section 2: x402 Protocol Flow ──────────────────────────────────── -->
+  <section class="section">
+    <p class="section-label">x402 Cycle</p>
+    <div class="flow" id="flow">
+
+      <div class="flow-step" id="s0">
+        <div class="flow-icon">⟶</div>
+        <div class="flow-name">Request</div>
+        <div class="flow-sub">GET /signal</div>
+      </div>
+
+      <div class="flow-step" id="s1">
+        <div class="flow-icon">⚡</div>
+        <div class="flow-name">402 Required</div>
+        <div class="flow-sub" id="s1-sub">0.10 XLM</div>
+      </div>
+
+      <div class="flow-step" id="s2">
+        <div class="flow-icon">✦</div>
+        <div class="flow-name">Pay Stellar</div>
+        <div class="flow-sub" id="s2-sub">Pending</div>
+      </div>
+
+      <div class="flow-step" id="s3">
+        <div class="flow-icon">◈</div>
+        <div class="flow-name">Verify Horizon</div>
+        <div class="flow-sub" id="s3-sub">Horizon API</div>
+      </div>
+
+      <div class="flow-step" id="s4">
+        <div class="flow-icon">◉</div>
+        <div class="flow-name">Deliver Signal</div>
+        <div class="flow-sub" id="s4-sub">—</div>
+      </div>
+
+    </div>
+  </section>
+
+  <!-- ─── Section 3: LLM Reasoning ────────────────────────────────────────── -->
+  <section class="section">
+    <div class="reasoning-box">
+      <div class="reasoning-header">
+        <p class="reasoning-title">LLM Reasoning</p>
+        <div class="reasoning-badge">groq / llama-3.1-8b-instant</div>
+      </div>
+      <div class="reasoning-body" id="reasoning">
+        <span class="cursor"></span>
+      </div>
+    </div>
+  </section>
+
+  <!-- ─── Section 4: Transaction Log ─────────────────────────────────────── -->
+  <section class="section">
+    <p class="section-label">
+      Transaction Log
+      <span style="color:var(--text3);font-weight:400;letter-spacing:0"> &mdash; Stellar Testnet &middot; Last 5</span>
+    </p>
+    <table class="tx-table">
+      <thead>
+        <tr>
+          <th>Time</th>
+          <th>Cycle</th>
+          <th>Signal</th>
+          <th>Amount</th>
+          <th>TX Hash</th>
+          <th class="right">Explorer</th>
+        </tr>
+      </thead>
+      <tbody id="tx-body"></tbody>
+    </table>
+  </section>
+
+  <!-- ─── Footer ──────────────────────────────────────────────────────────── -->
+  <div class="divider"></div>
+  <footer class="footer">
+    <span class="footer-mono" id="f-pair">BTC-USDC &middot; polling every 5s</span>
+    <span class="footer-mono">Total cycles: <span class="footer-accent" id="f-cycles">0</span></span>
+  </footer>
+
+</div><!-- /shell -->
+
+<script>
+/* ═══════════════════════════════════════════════════════════════════════════
+   PANTHEON Dashboard — Vanilla JS (no frameworks, no build step)
+
+   LIVE MODE  → polls GET http://localhost:8080/state every 5 s
+   MOCK MODE  → kicks in automatically when the API is unreachable
+
+   To use with a different host:
+     const API_BASE = 'http://YOUR_SERVER:8080';
+   ═══════════════════════════════════════════════════════════════════════════ */
+
+const API_BASE    = 'http://localhost:8080';
+const POLL_MS     = 5000;
+const HORIZON_URL = 'https://stellar.expert/explorer/testnet/tx/';
+
+/* Known wallets (from .env) */
+const CONSUMER_WALLET = 'GDYJ5LX3Q5LVSZ3GXWIGEZP22VPRXEK4IWJGJVDF5M6WJIEHF3ZK4NDS';
+
+/* ── Seed data: real TXs already verified on-chain ── */
+const SEED_TXS = [
+  { time:'05:29:40Z', cycle:1, signal:'BUY',  amount:'0.10', hash:'5441374f34dc3b58d6c4bd0afa1d0d7e3d1f26232ec269890f5518b228d70b94' },
+  { time:'05:30:15Z', cycle:2, signal:'SELL', amount:'0.10', hash:'e80bd3eeb9cfdcdc7a2686cd848082d9e9d95233ac55e4a95619c63a5202d93d' },
+  { time:'04:42:06Z', cycle:3, signal:'SELL', amount:'0.10', hash:'e4664e027b55bfee9c2e5be50234ed51bcc39bc25ad584d013621f3fdc3c5844' },
+  { time:'04:38:21Z', cycle:4, signal:'BUY',  amount:'0.10', hash:'9541c522b8d5a6dccad7975634bfb15b3879dcd671b736d6c95ec341b1d76463' },
+  { time:'03:52:44Z', cycle:5, signal:'BUY',  amount:'0.10', hash:'fb029dce79a09c2a6751fbb4bc84edc207ece742a590cf45fb8597da73a0b6ae' },
+];
+
+/* Mock signal pool (for offline mode) */
+const MOCK = [
+  { signal:'BUY',  confidence:0.82, reasoning:'RSI indica condición sobrevendida en 29.5. Soporte fuerte identificado en 65,400. Cruce de momentum confirma divergencia alcista. Recomienda ejecutar BUY con alta confianza.' },
+  { signal:'SELL', confidence:0.74, reasoning:'Resistencia clave en 68,200 bloqueando el avance. Volumen decreciente en las últimas 3 velas. MACD muestra cruce bajista inminente. Señal de distribución activa.' },
+  { signal:'HOLD', confidence:0.55, reasoning:'Rango lateral sin catalizador claro. Spread bid/ask elevado reduce la ventaja estadística. Esperar ruptura de rango 64,800–67,500 antes de operar.' },
+  { signal:'BUY',  confidence:0.91, reasoning:'EMA 200 actuando como soporte dinámico. Breakout confirmado con volumen 2.3× sobre la media. Estructura de mercado bullish intacta. Confluencia con Fibonacci 0.618.' },
+  { signal:'SELL', confidence:0.67, reasoning:'Patrón de distribución Wyckoff en formación. Smart money divergence en OBV. Fallo de continuación sobre máximos previos. R/R favorable para posición corta.' },
+];
+
+/* ── App state ── */
+let liveMode      = false;
+let cycleCount    = SEED_TXS.length;
+let mockBalance   = 9967.4967500 - (SEED_TXS.length * 0.10);
+let txLog         = [...SEED_TXS];
+let lastMockIdx   = -1;
+let typewriterTid = null;
+let currentStep   = -1;
+
+/* ── Utilities ── */
+const qs = id => document.getElementById(id);
+
+function trunc(hash) {
+  return hash.slice(0, 8) + '…' + hash.slice(-6);
+}
+
+function nowUTC() {
+  return new Date().toISOString().slice(11, 19) + 'Z';
+}
+
+function fmt(n) {
+  return Number(n).toLocaleString('en-US', { minimumFractionDigits: 4, maximumFractionDigits: 4 });
+}
+
+function sigClass(s) {
+  return s === 'BUY' ? 'buy' : s === 'SELL' ? 'sell' : 'hold';
+}
+
+/* ── Typewriter ── */
+function typewrite(el, text, speed = 16) {
+  if (typewriterTid) clearTimeout(typewriterTid);
+  el.innerHTML = '<span class="cursor"></span>';
+  let i = 0;
+  function tick() {
+    if (i < text.length) {
+      el.innerHTML = text.slice(0, ++i) + '<span class="cursor"></span>';
+      typewriterTid = setTimeout(tick, speed);
+    } else {
+      el.innerHTML = text;
+    }
+  }
+  tick();
+}
+
+/* ── Flow animation ── */
+const STEPS = ['s0','s1','s2','s3','s4'];
+
+function setStep(idx) {
+  STEPS.forEach((id, i) => {
+    const el = qs(id);
+    el.classList.remove('active','done');
+    if (i < idx)  el.classList.add('done');
+    if (i === idx) el.classList.add('active');
+  });
+  currentStep = idx;
+}
+
+function runFlowAnimation(signal, hash, onDone) {
+  const delays = [0, 420, 940, 1600, 2350];
+  delays.forEach((d, i) => setTimeout(() => setStep(i), d));
+  setTimeout(() => {
+    qs('s2-sub').textContent = trunc(hash);
+    qs('s3-sub').textContent = 'Confirmed ✓';
+    qs('s4-sub').textContent = signal;
+    setStep(4);
+    setTimeout(() => { setStep(-1); onDone && onDone(); }, 1400);
+  }, delays[4] + 420);
+}
+
+/* ── Hero update ── */
+function updateHero(sig, conf, pair, reasoning, balance) {
+  const sigEl  = qs('h-signal');
+  const confEl = qs('h-confidence');
+
+  qs('h-balance').textContent    = fmt(balance);
+  sigEl.textContent              = sig;
+  sigEl.className                = 'stat-number ' + sigClass(sig);
+  confEl.textContent             = (conf * 100).toFixed(1) + '%';
+  confEl.className               = 'stat-number ' + sigClass(sig);
+  qs('h-pair').textContent       = pair;
+  qs('h-time').textContent       = '← ' + nowUTC();
+  qs('h-cycle').textContent      = 'Cycle ' + cycleCount;
+  qs('f-cycles').textContent     = cycleCount;
+  qs('h-wallet').textContent     = CONSUMER_WALLET.slice(0, 12) + '…' + CONSUMER_WALLET.slice(-6);
+
+  typewrite(qs('reasoning'), reasoning);
+}
+
+/* ── TX table ── */
+function renderTxTable(isNew) {
+  const rows = txLog.slice(0, 5).map((tx, i) => `
+    <tr class="${i === 0 && isNew ? 'new-row' : ''}">
+      <td class="tx-time">${tx.time}</td>
+      <td class="tx-cycle">${tx.cycle}</td>
+      <td><span class="tx-sig ${sigClass(tx.signal)}">${tx.signal}</span></td>
+      <td class="tx-amount">${tx.amount} XLM</td>
+      <td class="tx-hash">${trunc(tx.hash)}</td>
+      <td class="right">
+        <a class="tx-link" href="${HORIZON_URL}${tx.hash}" target="_blank" rel="noopener noreferrer">
+          View
+          <svg width="10" height="10" viewBox="0 0 12 12" fill="none">
+            <path d="M2 10L10 2M10 2H5M10 2V7" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
+          </svg>
+        </a>
+      </td>
+    </tr>
+  `).join('');
+  qs('tx-body').innerHTML = rows;
+}
+
+/* ── Live mode: apply server state ── */
+function applyServerState(state) {
+  // Update cycle count and tx log from server
+  cycleCount = state.cycle || cycleCount;
+
+  if (state.tx_log && state.tx_log.length > 0) {
+    // Merge server log with seed, deduplicate by hash
+    const merged = [...state.tx_log, ...SEED_TXS];
+    const seen   = new Set();
+    txLog = merged.filter(tx => {
+      if (seen.has(tx.hash)) return false;
+      seen.add(tx.hash);
+      return true;
+    });
+  }
+
+  const sig  = state.last_signal || '—';
+  const conf = state.confidence  || 0;
+  const pair = state.pair        || 'BTC-USDC';
+  const text = state.reasoning   || 'Waiting for next cycle…';
+
+  const isNew = state.tx_log && state.tx_log.length > 0;
+  if (isNew) {
+    const latestHash = state.tx_log[0].hash || 'live';
+    runFlowAnimation(sig, latestHash, () => {
+      updateHero(sig, conf, pair, text, mockBalance);
+      renderTxTable(true);
+    });
+  } else {
+    updateHero(sig, conf, pair, text, mockBalance);
+    renderTxTable(false);
+  }
+}
+
+/* ── Mock mode: simulate a cycle ── */
+function runMockCycle() {
+  cycleCount++;
+  mockBalance -= 0.10;
+
+  let idx;
+  do { idx = Math.floor(Math.random() * MOCK.length); } while (idx === lastMockIdx);
+  lastMockIdx = idx;
+  const m = MOCK[idx];
+
+  // Fake TX hash
+  const hash = Array.from({length:64}, () => '0123456789abcdef'[Math.floor(Math.random()*16)]).join('');
+
+  txLog.unshift({ time: nowUTC(), cycle: cycleCount, signal: m.signal, amount: '0.10', hash });
+  if (txLog.length > 10) txLog.pop();
+
+  runFlowAnimation(m.signal, hash, () => {
+    updateHero(m.signal, m.confidence, 'BTC-USDC', m.reasoning, mockBalance);
+    renderTxTable(true);
+  });
+}
+
+/* ── Online / offline indicators ── */
+let prevLive = null;
+function setLiveStatus(online) {
+  if (online === prevLive) return;
+  prevLive = online;
+  liveMode  = online;
+
+  const dot    = qs('live-dot');
+  const banner = qs('api-banner');
+  qs('api-url-text').textContent = API_BASE + '/state';
+
+  if (online) {
+    dot.classList.remove('offline');
+    banner.classList.remove('visible');
+    qs('live-text').textContent = 'LIVE · STELLAR TESTNET';
+  } else {
+    dot.classList.add('offline');
+    banner.classList.add('visible');
+    qs('live-text').textContent = 'MOCK MODE · API OFFLINE';
+  }
+}
+
+/* ─────────────────────────────────────────────────────────────────────────────
+   Main poll loop
+   ─────────────────────────────────────────────────────────────────────────── */
+let lastCycleFromServer = 0;
+
+async function poll() {
+  try {
+    const res   = await fetch(`${API_BASE}/state`, { signal: AbortSignal.timeout(4000) });
+    const state = await res.json();
+
+    setLiveStatus(true);
+
+    // Only trigger animation when the server reports a new cycle
+    if (state.cycle > lastCycleFromServer) {
+      lastCycleFromServer = state.cycle;
+      applyServerState(state);
+    } else {
+      // No new cycle — just refresh hero numbers silently
+      updateHero(
+        state.last_signal || '—',
+        state.confidence  || 0,
+        state.pair        || 'BTC-USDC',
+        state.reasoning   || 'Waiting for next cycle…',
+        mockBalance
+      );
+      renderTxTable(false);
+    }
+
+  } catch {
+    setLiveStatus(false);
+    // Run a mock cycle every poll interval in offline mode
+    runMockCycle();
+  }
+}
+
+/* ── Init ── */
+function init() {
+  qs('h-wallet').textContent  = CONSUMER_WALLET.slice(0, 12) + '…' + CONSUMER_WALLET.slice(-6);
+  qs('h-balance').textContent = fmt(mockBalance);
+  qs('h-signal').textContent  = '—';
+  qs('h-confidence').textContent = '—';
+  qs('f-cycles').textContent  = cycleCount;
+
+  renderTxTable(false);
+
+  // First poll immediately, then on interval
+  poll();
+  setInterval(poll, POLL_MS);
+}
+
+document.addEventListener('DOMContentLoaded', init);
+</script>
+</body>
+</html>

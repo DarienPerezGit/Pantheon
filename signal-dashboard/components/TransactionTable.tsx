@@ -1,12 +1,10 @@
-﻿import type { TxEntry } from '@/lib/types'
+import type { TxEntry } from '@/lib/types'
 import { HORIZON_EXPLORER } from '@/lib/types'
 
 function trunc(h: string) { return `${h.slice(0, 8)}...${h.slice(-6)}` }
 
 function badge(sig: string) {
-  if (sig === 'BUY')  return 'text-neon-green bg-neon-green/10'
-  if (sig === 'SELL') return 'text-crimson bg-crimson/10'
-  return 'text-grey-signal bg-grey-signal/15'
+  return 'text-black bg-gray-100';
 }
 
 export function TransactionTable({
@@ -18,17 +16,17 @@ export function TransactionTable({
 }) {
   return (
     <section className="pt-12">
-      <p className="section-label">
+      <p className="section-label text-gray-500">
         Transaction Log
-        <span className="ml-2 font-normal tracking-normal text-subtle">
+        <span className="ml-2 font-normal tracking-normal text-gray-400">
           -- Stellar Testnet · last 5
         </span>
       </p>
-      <table className="w-full border-collapse">
+      <table className="w-full border-collapse bg-white">
         <thead>
-          <tr className="border-b border-space-line">
+          <tr className="border-b border-gray-200">
             {['Time','Cycle','Pair','Signal','Amount','TX Hash','Explorer'].map(h => (
-              <th key={h} className="text-left pb-3.5 text-[10px] font-bold tracking-[0.15em] uppercase text-subtle last:text-right">
+              <th key={h} className="text-left pb-3.5 text-[10px] font-bold tracking-[0.15em] uppercase text-gray-400 last:text-right">
                 {h}
               </th>
             ))}
@@ -39,20 +37,20 @@ export function TransactionTable({
             <tr
               key={tx.hash}
               className={[
-                'border-b border-space-line transition-colors hover:bg-space-dark',
+                'border-b border-gray-200 transition-colors hover:bg-gray-50',
                 i === 0 && tx.cycle === latestCycle ? 'animate-fadeInRow' : '',
               ].join(' ')}
             >
-              <td className="py-3.5 font-mono text-[12px] text-subtle">{tx.time}</td>
-              <td className="py-3.5 font-mono text-[12px] text-muted">{tx.cycle}</td>
-              <td className="py-3.5 font-mono text-[12px] text-muted">{tx.pair}</td>
+              <td className="py-3.5 font-mono text-[12px] text-gray-400">{tx.time}</td>
+              <td className="py-3.5 font-mono text-[12px] text-gray-400">{tx.cycle}</td>
+              <td className="py-3.5 font-mono text-[12px] text-gray-400">{tx.pair}</td>
               <td className="py-3.5">
                 <span className={`font-mono text-[10px] font-bold tracking-[0.08em] uppercase px-2 py-0.5 ${badge(tx.signal)}`}>
                   {tx.signal}
                 </span>
               </td>
-              <td className="py-3.5 font-mono text-[13px] font-semibold text-white">{tx.amount} XLM</td>
-              <td className="py-3.5 font-mono text-[12px] text-subtle">{trunc(tx.hash)}</td>
+              <td className="py-3.5 font-mono text-[13px] font-semibold text-black">{tx.amount} USDC</td>
+              <td className="py-3.5 font-mono text-[12px] text-gray-400">{trunc(tx.hash)}</td>
               <td className="py-3.5 text-right">
                 <a
                   href={`${HORIZON_EXPLORER}${tx.hash}`}
