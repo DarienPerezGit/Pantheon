@@ -30,3 +30,9 @@ agent.log
 # OS
 .DS_Store
 Thumbs.db
+
+# AI Agent Context & Prompts
+AGENT_PROMPT.md
+caveman-prompt.md
+CONTEXT.md
+MEMORY.md
