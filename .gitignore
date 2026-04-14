@@ -13,15 +13,18 @@ dist/
 build/
 
 # Go
-signal-api/signal-api
-signal-api/*.exe
+**/signal-api/signal-api
+**/*.exe
 
-# Node
-signal-dashboard/node_modules/
+# Node / Build
 node_modules/
+.next/
+dist/
+build/
+.cache/
+.vercel
+out/
 signal-api-ts/dist/
-signal-dashboard/node_modules/
-signal-dashboard/.next/
 
 # Logs
 *.log
