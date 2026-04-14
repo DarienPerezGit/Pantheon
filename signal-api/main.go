@@ -134,7 +134,11 @@ func main() {
 	// Serve the dashboard static files at /ui/
 	mux.Handle("/ui/", http.StripPrefix("/ui/", http.FileServer(http.Dir("../dashboard"))))
 
-	addr := ":8080"
+	port := os.Getenv("PORT")
+	if port == "" {
+		port = "8080"
+	}
+	addr := ":" + port
 	log.Printf("[START] Signal API listening on %s", addr)
 	log.Printf("[CONFIG] Server wallet : %s", serverPublicKey)
 	log.Printf("[CONFIG] Signal price  : %s USDC", signalPrice)
