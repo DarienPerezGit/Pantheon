@@ -1,0 +1,9 @@
+# Instrucciones para Railway/Nixpacks
+[phases.setup]
+nixPkgs = ["go"]
+
+[phases.build]
+cmds = ["cd signal-api && go build -o ../pantheon-api main.go"]
+
+[start]
+cmd = "./pantheon-api"
