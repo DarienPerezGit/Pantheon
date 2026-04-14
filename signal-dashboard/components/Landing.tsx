@@ -35,8 +35,8 @@ export default function Landing() {
               Autonomous agents that pay for data.
             </h1>
             <p className="text-xl text-gray-600 mb-8 leading-relaxed">
-              HTTP 402 as a protocol for agent-to-agent micropayments. No smart contracts.
-              Stellar USDC. Real payments, real settlement.
+              HTTP 402 as a protocol for agent-to-agent micropayments.
+              Stellar. Real payments, real settlement.
             </p>
             <div className="flex gap-4">
               <Link
