@@ -75,6 +75,7 @@ var (
 	signalPrice     string
 	horizonURL      string
 	anthropicKey    string
+	groqKey         string
 
 	signals = []string{"BUY", "SELL", "HOLD"}
 
@@ -114,6 +115,7 @@ func main() {
 	signalPrice = os.Getenv("SIGNAL_PRICE_USDC")
 	horizonURL = os.Getenv("HORIZON_URL")
 	anthropicKey = os.Getenv("ANTHROPIC_API_KEY")
+	groqKey = os.Getenv("GROQ_API_KEY")
 
 	if serverPublicKey == "" {
 		log.Fatal("[FATAL] SERVER_PUBLIC_KEY is not set")
@@ -138,9 +140,11 @@ func main() {
 	log.Printf("[CONFIG] Signal price  : %s USDC", signalPrice)
 	log.Printf("[CONFIG] Horizon URL   : %s", horizonURL)
 	if anthropicKey != "" {
-		log.Printf("[CONFIG] Claude API    : enabled (claude-sonnet-4-20250514)")
+		log.Printf("[CONFIG] AI Engine     : Anthropic Claude enabled")
+	} else if groqKey != "" {
+		log.Printf("[CONFIG] AI Engine     : Groq Llama3 enabled")
 	} else {
-		log.Printf("[CONFIG] Claude API    : disabled (mock signals)")
+		log.Printf("[CONFIG] AI Engine     : disabled (mock signals)")
 	}
 
 	if err := http.ListenAndServe(addr, corsMiddleware(mux)); err != nil {
@@ -456,26 +460,31 @@ func generateSignal(pair string) Signal {
 
 // ─── Claude Signal Generator ─────────────────────────────────────────────────
 
-// generateSignalClaude calls Claude API to produce a signal; falls back to mock.
+// generateSignalAI calls an AI API (Anthropic or Groq) to produce a signal; falls back to mock.
+func generateSignalAI(pair string) Signal {
+	if anthropicKey != "" {
+		sig, err := callClaudeSignal(pair)
+		if err == nil {
+			return sig
+		}
+		log.Printf("[AI] Claude Error: %v — falling back", err)
+	}
+
+	if groqKey != "" {
+		sig, err := callGroqSignal(pair)
+		if err == nil {
+			return sig
+		}
+		log.Printf("[AI] Groq Error: %v — falling back", err)
+	}
+
+	log.Printf("[AI] No AI available or all failed — using mock signal")
+	return generateSignal(pair)
+}
+
+// generateSignalClaude is kept for backward compatibility if needed, but redirects to general AI logic
 func generateSignalClaude(pair string) Signal {
-	if anthropicKey == "" {
-		log.Printf("[CLAUDE] No API key — using mock signal")
-		return generateSignal(pair)
-	}
-	sig, err := callClaudeSignal(pair)
-	if err != nil {
-		log.Printf("[CLAUDE] Error: %v — falling back to mock", err)
-		return generateSignal(pair)
-	}
-	switch sig.Signal {
-	case "BUY", "SELL", "HOLD":
-		// valid
-	default:
-		log.Printf("[CLAUDE] Invalid signal value %q — falling back to mock", sig.Signal)
-		return generateSignal(pair)
-	}
-	log.Printf("[CLAUDE] Signal generated: %s | confidence: %.2f", sig.Signal, sig.Confidence)
-	return sig
+	return generateSignalAI(pair)
 }
 
 // mockMarketData returns plausible but simulated market data for a pair.
@@ -578,6 +587,87 @@ Respond with exactly this JSON structure:
 	}
 	if err := json.Unmarshal([]byte(text), &signalData); err != nil {
 		return Signal{}, fmt.Errorf("parsing signal JSON from Claude (%q): %w", text, err)
+	}
+
+	return Signal{
+		Pair:            pair,
+		Signal:          strings.ToUpper(signalData.Signal),
+		Confidence:      signalData.Confidence,
+		Reasoning:       signalData.Reasoning,
+		Timestamp:       time.Now().UTC().Format(time.RFC3339),
+		ValidForSeconds: 300,
+	}, nil
+}
+
+// ─── Groq Signal Generator ───────────────────────────────────────────────────
+
+func callGroqSignal(pair string) (Signal, error) {
+	price, volume, rsi := mockMarketData(pair)
+
+	prompt := fmt.Sprintf(
+		`Eres un experto en trading. Analiza estos datos y responde SOLO con un objeto JSON.
+Par: %s
+Precio: %.4f USDC
+Volumen 24h: %.0f
+RSI (14): %.1f
+Estructura JSON requerida: {"signal": "BUY"|"SELL"|"HOLD", "confidence": 0.50-0.95, "reasoning": "una frase corta"}`,
+		pair, price, volume, rsi,
+	)
+
+	reqBody := map[string]interface{}{
+		"model": "llama3-8b-8192",
+		"messages": []map[string]string{
+			{"role": "user", "content": prompt},
+		},
+		"temperature": 0.2,
+	}
+
+	bodyBytes, _ := json.Marshal(reqBody)
+	req, _ := http.NewRequest(http.MethodPost, "https://api.groq.com/openai/v1/chat/completions", bytes.NewReader(bodyBytes))
+	req.Header.Set("Authorization", "Bearer "+groqKey)
+	req.Header.Set("Content-Type", "application/json")
+
+	client := &http.Client{Timeout: 20 * time.Second}
+	resp, err := client.Do(req)
+	if err != nil {
+		return Signal{}, err
+	}
+	defer resp.Body.Close()
+
+	if resp.StatusCode != http.StatusOK {
+		b, _ := io.ReadAll(resp.Body)
+		return Signal{}, fmt.Errorf("Groq API error %d: %s", resp.StatusCode, string(b))
+	}
+
+	var groqResp struct {
+		Choices []struct {
+			Message struct {
+				Content string `json:"content"`
+			} `json:"message"`
+		} `json:"choices"`
+	}
+	json.NewDecoder(resp.Body).Decode(&groqResp)
+
+	if len(groqResp.Choices) == 0 {
+		return Signal{}, fmt.Errorf("empty response from Groq")
+	}
+
+	text := strings.TrimSpace(groqResp.Choices[0].Message.Content)
+	// Simple JSON cleaner
+	if idx := strings.Index(text, "{"); idx != -1 {
+		text = text[idx:]
+	}
+	if idx := strings.LastIndex(text, "}"); idx != -1 {
+		text = text[:idx+1]
+	}
+
+	var signalData struct {
+		Signal     string  `json:"signal"`
+		Confidence float64 `json:"confidence"`
+		Reasoning  string  `json:"reasoning"`
+	}
+	if err := json.Unmarshal([]byte(text), &signalData); err != nil {
+		return Signal{}, err
 	}
 
 	return Signal{
